@@ -36,12 +36,22 @@ import {
 import { fetchSocietyPendingVerifications } from '../../lib/resolutionService';
 import type { Department, ComplaintCategory, ExpenseCategory } from '../../types/database';
 import type { ComplaintWithRelations } from '../../lib/complaintService';
+import { AnnouncementsSection } from './sections/AnnouncementsSection';
+import { PollsSection } from './sections/PollsSection';
+import { EmergencyContactsSection } from './sections/EmergencyContactsSection';
+import { PreventiveMaintenanceSection } from './sections/PreventiveMaintenanceSection';
+import { OperationalReportsSection } from './sections/OperationalReportsSection';
 
 const ADMIN_NAV = [
   { label: "Overview", href: "/dashboard/admin", icon: "chart" as const },
   { label: "Memberships & Staff", href: "/dashboard/admin", icon: "user-check" as const },
   { label: "Society Expenses", href: "/dashboard/admin", icon: "file" as const },
   { label: "SLA Escalations", href: "/dashboard/admin", icon: "alert" as const },
+  { label: "Announcements", href: "/dashboard/admin", icon: "bell" as const },
+  { label: "Community Polls", href: "/dashboard/admin", icon: "check" as const },
+  { label: "Emergency Contacts", href: "/dashboard/admin", icon: "alert" as const },
+  { label: "Preventive Maint.", href: "/dashboard/admin", icon: "refresh-cw" as const },
+  { label: "Operational Reports", href: "/dashboard/admin", icon: "chart" as const },
   { label: "Departments", href: "/admin/departments", icon: "users" as const },
   { label: "Categories", href: "/admin/categories", icon: "filter" as const },
   { label: "Audit Logs", href: "/admin/audit-logs", icon: "shield" as const },
@@ -51,7 +61,18 @@ const ADMIN_NAV = [
 export const AdminDashboard: React.FC = () => {
   const { user, currentSociety, approveMembership, rejectMembership, enrollStaffMember } = useAuth();
   const [activeSection, setActiveSection] = useState<
-    'overview' | 'memberships' | 'expenses' | 'escalations' | 'departments' | 'categories' | 'audit'
+    | 'overview'
+    | 'memberships'
+    | 'expenses'
+    | 'escalations'
+    | 'announcements'
+    | 'polls'
+    | 'emergency'
+    | 'preventive'
+    | 'reports'
+    | 'departments'
+    | 'categories'
+    | 'audit'
   >('overview');
 
   // Action / toast message
@@ -547,6 +568,11 @@ export const AdminDashboard: React.FC = () => {
               ['memberships', 'Memberships & Staff'],
               ['expenses', 'Society Expenses'],
               ['escalations', 'SLA Escalations'],
+              ['announcements', 'Announcements'],
+              ['polls', 'Community Polls'],
+              ['emergency', 'Emergency Contacts'],
+              ['preventive', 'Preventive Maint.'],
+              ['reports', 'Operational Reports'],
               ['departments', 'Departments'],
               ['categories', 'Categories & SLAs'],
               ['audit', 'Audit Logs'],
@@ -1340,6 +1366,45 @@ export const AdminDashboard: React.FC = () => {
               </div>
             )}
           </Card>
+        )}
+
+        {/* 8. ANNOUNCEMENTS SECTION */}
+        {activeSection === 'announcements' && currentSociety && (
+          <AnnouncementsSection
+            societyId={currentSociety.id}
+            authorId={user?.id || ''}
+          />
+        )}
+
+        {/* 9. COMMUNITY POLLS SECTION */}
+        {activeSection === 'polls' && currentSociety && (
+          <PollsSection
+            societyId={currentSociety.id}
+            userId={user?.id || ''}
+          />
+        )}
+
+        {/* 10. EMERGENCY CONTACTS SECTION */}
+        {activeSection === 'emergency' && currentSociety && (
+          <EmergencyContactsSection
+            societyId={currentSociety.id}
+          />
+        )}
+
+        {/* 11. PREVENTIVE MAINTENANCE SECTION */}
+        {activeSection === 'preventive' && currentSociety && (
+          <PreventiveMaintenanceSection
+            societyId={currentSociety.id}
+            departments={departments}
+            userId={user?.id || ''}
+          />
+        )}
+
+        {/* 12. OPERATIONAL REPORTS SECTION */}
+        {activeSection === 'reports' && currentSociety && (
+          <OperationalReportsSection
+            societyId={currentSociety.id}
+          />
         )}
 
         {/* MODAL: Record Society Expense */}
