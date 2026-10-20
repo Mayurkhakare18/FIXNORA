@@ -310,7 +310,7 @@ export async function fetchMaintenanceRecords(
       .select(`
         *,
         inspector:profiles!maintenance_records_performed_by_fkey(full_name),
-        schedule:maintenance_schedules(facility_name)
+        schedule:maintenance_schedules!fk_records_schedule_society(facility_name)
       `)
       .eq('society_id', societyId)
       .order('performed_date', { ascending: false });

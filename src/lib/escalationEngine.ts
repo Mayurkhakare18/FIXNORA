@@ -264,7 +264,7 @@ export async function runSocietySlaAudit(
       sla_target_at,
       tracking_id,
       title,
-      category:complaint_categories(id, name, sla_hours)
+      category:complaint_categories!fk_complaints_category_society(id, name, sla_hours)
     `)
     .eq('society_id', societyId)
     .not('status', 'in', '("resolved","closed","rejected")');

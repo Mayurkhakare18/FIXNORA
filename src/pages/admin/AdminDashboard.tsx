@@ -139,8 +139,8 @@ export const AdminDashboard: React.FC = () => {
         .from('complaints')
         .select(`
           *,
-          category:complaint_categories(id, name),
-          building:buildings(id, name),
+          category:complaint_categories!fk_complaints_category_society(id, name),
+          building:buildings!fk_complaints_building_society(id, name),
           flat:flats(id, flat_number)
         `)
         .eq('society_id', currentSociety.id)

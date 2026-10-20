@@ -109,7 +109,7 @@ export async function generateOperationalReport(
       .from('complaints')
       .select(`
         id, tracking_id, title, priority, status, created_at, resolved_at, closed_at, sla_target_at,
-        category:complaint_categories(name),
+        category:complaint_categories!fk_complaints_category_society(name),
         department:departments(name)
       `)
       .eq('society_id', societyId);
@@ -214,7 +214,7 @@ export async function generateOperationalReport(
       .from('society_memberships')
       .select(`
         user_id, role, staff_designation,
-        profile:profiles(full_name)
+        profile:profiles!society_memberships_user_id_fkey(full_name)
       `)
       .eq('society_id', societyId)
       .in('role', ['maintenance_staff', 'supervisor']);

@@ -368,10 +368,10 @@ export async function fetchStaffAssignedQueue(
     .from('complaint_assignments')
     .select(`
       *,
-      complaint:complaints (
+      complaint:complaints!fk_assignments_complaint_society (
         *,
-        category:complaint_categories(id, name),
-        building:buildings(id, name),
+        category:complaint_categories!fk_complaints_category_society(id, name),
+        building:buildings!fk_complaints_building_society(id, name),
         flat:flats(id, flat_number)
       )
     `)

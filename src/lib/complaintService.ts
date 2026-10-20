@@ -317,11 +317,11 @@ export async function lookupComplaintByTrackingId(
     .from('complaints')
     .select(`
       *,
-      category:complaint_categories(id, name),
+      category:complaint_categories!fk_complaints_category_society(id, name),
       department:departments(id, name),
-      building:buildings(id, name),
+      building:buildings!fk_complaints_building_society(id, name),
       flat:flats(id, flat_number),
-      assignments:complaint_assignments(id, status, assigned_at)
+      assignments:complaint_assignments!fk_assignments_complaint_society(id, status, assigned_at)
     `)
     .eq('tracking_id', cleanId)
     .maybeSingle();
@@ -399,8 +399,8 @@ export async function fetchResidentDashboardData(
     .from('complaints')
     .select(`
       *,
-      category:complaint_categories(id, name),
-      building:buildings(id, name),
+      category:complaint_categories!fk_complaints_category_society(id, name),
+      building:buildings!fk_complaints_building_society(id, name),
       flat:flats(id, flat_number)
     `)
     .eq('society_id', societyId)

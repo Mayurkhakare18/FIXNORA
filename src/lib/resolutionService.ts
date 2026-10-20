@@ -281,7 +281,7 @@ export async function fetchResidentPendingVerifications(
 
   const { data, error } = await supabase
     .from('complaints')
-    .select('*, category:complaint_categories(id, name), building:buildings(id, name), flat:flats(id, flat_number)')
+    .select('*, category:complaint_categories!fk_complaints_category_society(id, name), building:buildings!fk_complaints_building_society(id, name), flat:flats(id, flat_number)')
     .eq('society_id', societyId)
     .eq('citizen_id', residentId)
     .eq('status', 'resolved')
@@ -305,7 +305,7 @@ export async function fetchSocietyPendingVerifications(
 
   const { data, error } = await supabase
     .from('complaints')
-    .select('*, citizen:profiles!complaints_citizen_id_fkey(full_name, phone_number), category:complaint_categories(id, name)')
+    .select('*, citizen:profiles!complaints_citizen_id_fkey(full_name, phone_number), category:complaint_categories!fk_complaints_category_society(id, name)')
     .eq('society_id', societyId)
     .eq('status', 'resolved')
     .order('resolved_at', { ascending: false });

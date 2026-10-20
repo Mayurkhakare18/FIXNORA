@@ -64,7 +64,7 @@ export const OperationalReportsSection: React.FC<OperationalReportsSectionProps>
         .from('complaints')
         .select(`
           *,
-          category:complaint_categories(name),
+          category:complaint_categories!fk_complaints_category_society(name),
           department:departments(name)
         `)
         .eq('society_id', societyId);
