@@ -3,6 +3,8 @@
 -- Description: Core extensions, security helper functions, and audit trigger engine
 -- ==============================================================================
 
+SET check_function_bodies = false;
+
 -- 1. Enable Required Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -69,18 +71,18 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 CREATE OR REPLACE FUNCTION public.has_society_role(target_society_id uuid, required_roles text[])
 RETURNS boolean AS $$
 DECLARE
-    current_role text;
+    v_user_role text;
 BEGIN
     IF public.is_platform_admin() THEN
         RETURN true;
     END IF;
 
-    current_role := public.get_user_society_role(target_society_id);
-    IF current_role IS NULL THEN
+    v_user_role := public.get_user_society_role(target_society_id);
+    IF v_user_role IS NULL THEN
         RETURN false;
     END IF;
 
-    RETURN current_role = ANY(required_roles);
+    RETURN v_user_role = ANY(required_roles);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
