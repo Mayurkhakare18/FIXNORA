@@ -14,10 +14,41 @@ ON public.complaint_assignments (complaint_id)
 WHERE status IN ('assigned', 'accepted', 'in_progress');
 
 -- ------------------------------------------------------------------------------
--- 2. Enhance assignments_select Policy: Resident Visibility for Own Complaints
+-- 2. Security Helpers to Break Mutual RLS Recursion between Complaints & Assignments
 -- ------------------------------------------------------------------------------
--- Allows the complaint author (resident) to view the assignment record of their own complaint,
--- in addition to the assigned technician and society administrators/supervisors.
+CREATE OR REPLACE FUNCTION public.is_assigned_to_complaint(p_complaint_id uuid, p_user_id uuid)
+RETURNS boolean AS $$
+BEGIN
+    IF p_complaint_id IS NULL OR p_user_id IS NULL THEN
+        RETURN false;
+    END IF;
+    RETURN EXISTS (
+        SELECT 1 FROM public.complaint_assignments
+        WHERE complaint_id = p_complaint_id AND assigned_to_user_id = p_user_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE EXECUTE ON FUNCTION public.is_assigned_to_complaint(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_assigned_to_complaint(uuid, uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.is_complaint_complainant(p_complaint_id uuid, p_user_id uuid)
+RETURNS boolean AS $$
+BEGIN
+    IF p_complaint_id IS NULL OR p_user_id IS NULL THEN
+        RETURN false;
+    END IF;
+    RETURN EXISTS (
+        SELECT 1 FROM public.complaints
+        WHERE id = p_complaint_id AND citizen_id = p_user_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE EXECUTE ON FUNCTION public.is_complaint_complainant(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_complaint_complainant(uuid, uuid) TO authenticated;
+
+-- Enhance assignments_select Policy: Resident Visibility for Own Complaints
 DROP POLICY IF EXISTS "assignments_select" ON public.complaint_assignments;
 
 CREATE POLICY "assignments_select" ON public.complaint_assignments
@@ -25,10 +56,32 @@ FOR SELECT TO authenticated
 USING (
     assigned_to_user_id = public.auth_user_id()
     OR public.has_society_role(society_id, ARRAY['society_admin', 'supervisor'])
-    OR EXISTS (
-        SELECT 1 FROM public.complaints c
-        WHERE c.id = complaint_assignments.complaint_id
-          AND c.citizen_id = public.auth_user_id()
+    OR public.is_complaint_complainant(complaint_assignments.complaint_id, public.auth_user_id())
+);
+
+-- Update complaints_select to use is_assigned_to_complaint helper
+DROP POLICY IF EXISTS "complaints_select" ON public.complaints;
+
+CREATE POLICY "complaints_select" ON public.complaints
+FOR SELECT USING (
+    public.has_society_role(society_id, ARRAY['society_admin', 'supervisor'])
+    OR (
+        public.has_society_role(society_id, ARRAY['maintenance_staff'])
+        AND (
+            public.is_assigned_to_complaint(complaints.id, public.auth_user_id())
+            OR department_id IN (
+                SELECT d.id FROM public.departments d
+                JOIN public.society_memberships sm ON sm.society_id = d.society_id
+                WHERE sm.user_id = public.auth_user_id()
+            )
+        )
+    )
+    OR (
+        public.has_society_role(society_id, ARRAY['resident'])
+        AND (
+            citizen_id = public.auth_user_id()
+            OR (is_anonymous = false)
+        )
     )
 );
 
