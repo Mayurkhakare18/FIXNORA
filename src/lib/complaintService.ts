@@ -45,8 +45,10 @@ export interface ComplaintSubmissionInput {
 
 export interface ComplaintWithRelations extends Complaint {
   category?: { id: string; name: string } | null;
+  department?: { id: string; name: string } | null;
   building?: { id: string; name: string } | null;
   flat?: { id: string; flat_number: string } | null;
+  assignments?: Array<{ id: string; status: string; assigned_at: string }>;
   attachments?: ComplaintAttachment[];
   history?: ComplaintStatusHistory[];
   comments?: ComplaintComment[];
@@ -296,8 +298,10 @@ export async function lookupComplaintByTrackingId(
     .select(`
       *,
       category:complaint_categories(id, name),
+      department:departments(id, name),
       building:buildings(id, name),
-      flat:flats(id, flat_number)
+      flat:flats(id, flat_number),
+      assignments:complaint_assignments(id, status, assigned_at)
     `)
     .eq('tracking_id', cleanId)
     .maybeSingle();

@@ -247,7 +247,20 @@ export const ComplaintTrackingPage: React.FC = () => {
 
               {/* Complaint Details */}
               <div className="border-t border-bd/60 pt-4 space-y-1">
+                <Row a="Department" b={complaint.department?.name || 'Assigned Department'} />
                 <Row a="Category" b={complaint.category?.name || 'Standard Category'} />
+                {complaint.assignments && complaint.assignments.length > 0 && (
+                  <Row
+                    a="Work Status"
+                    b={
+                      complaint.assignments.some((a) => a.status === 'in_progress')
+                        ? 'Technician On-Site / In Progress'
+                        : complaint.assignments.some((a) => ['assigned', 'accepted'].includes(a.status))
+                        ? 'Assigned to In-House Technician'
+                        : 'Work Completed'
+                    }
+                  />
+                )}
                 <Row
                   a="Location"
                   b={
