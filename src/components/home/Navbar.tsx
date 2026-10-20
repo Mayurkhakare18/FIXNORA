@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { Icon } from '../ui/Icon';
 import { Btn, cn } from '../ui/Primitives';
 import { Language } from '../../i18n/translations';
 
 export const Navbar: React.FC = () => {
   const { lang, setLang, t } = useApp();
+  const { user, currentMembership, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -100,15 +102,48 @@ export const Navbar: React.FC = () => {
             <option value="mr">मराठी</option>
           </select>
 
-          <Link to="/auth/login" className="hidden sm:inline-flex">
-            <Btn className="py-2 text-xs">{t("lg")}</Btn>
-          </Link>
-
-          <Link to="/dashboard/citizen" className="hidden sm:inline-flex">
-            <Btn v="p" className="py-2 text-xs">
-              {t("gs")}
-            </Btn>
-          </Link>
+          {user ? (
+            <div className="hidden sm:inline-flex items-center gap-2">
+              <Link to={
+                currentMembership?.role === 'society_admin'
+                  ? '/dashboard/admin'
+                  : currentMembership?.role === 'maintenance_staff'
+                  ? '/dashboard/officer'
+                  : currentMembership?.role === 'supervisor'
+                  ? '/dashboard/department'
+                  : '/dashboard/citizen'
+              }>
+                <Btn v="p" className="py-2 text-xs">
+                  {currentMembership?.role === 'society_admin'
+                    ? 'Admin Portal'
+                    : currentMembership?.role === 'maintenance_staff'
+                    ? 'Staff Queue'
+                    : currentMembership?.role === 'supervisor'
+                    ? 'Department Portal'
+                    : 'Resident Portal'}
+                </Btn>
+              </Link>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="rounded-lg border border-bd bg-card px-2.5 py-1.5 text-xs font-medium text-navy hover:bg-soft transition"
+                title="Sign Out"
+              >
+                <Icon n="log-out" s={14} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link to="/auth/login" className="hidden sm:inline-flex">
+                <Btn className="py-2 text-xs">{t("lg")}</Btn>
+              </Link>
+              <Link to="/auth/register" className="hidden sm:inline-flex">
+                <Btn v="p" className="py-2 text-xs">
+                  {t("gs")}
+                </Btn>
+              </Link>
+            </>
+          )}
 
           {/* Mobile Menu Toggle */}
           <button

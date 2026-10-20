@@ -19,7 +19,11 @@ export type IconName =
   | 'filter'
   | 'log-out'
   | 'arrow-right'
-  | 'upload';
+  | 'upload'
+  | 'mail'
+  | 'plus'
+  | 'refresh-cw'
+  | 'user-check';
 
 const PATHS: Record<IconName, string> = {
   check: "M4 12.5l5 5L20 6",
@@ -41,15 +45,20 @@ const PATHS: Record<IconName, string> = {
   'log-out': "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1",
   'arrow-right': "M5 12h14M12 5l7 7-7 7",
   upload: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12",
+  mail: "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6",
+  plus: "M12 5v14M5 12h14",
+  'refresh-cw': "M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15",
+  'user-check': "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM16 11l2 2 4-4",
 };
 
 interface IconProps {
   n: IconName;
   s?: number;
   c?: string;
+  className?: string;
 }
 
-export const Icon: React.FC<IconProps> = ({ n, s = 18, c = '' }) => {
+export const Icon: React.FC<IconProps> = ({ n, s = 18, c = '', className = '' }) => {
   return (
     <svg
       width={s}
@@ -60,7 +69,7 @@ export const Icon: React.FC<IconProps> = ({ n, s = 18, c = '' }) => {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={c}
+      className={`${c} ${className}`.trim()}
       aria-hidden="true"
     >
       <path d={PATHS[n]} />
