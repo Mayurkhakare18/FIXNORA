@@ -67,7 +67,7 @@ async function runTestSuite() {
     .filter((f) => f.endsWith('.sql'))
     .sort();
 
-  assert(migrationFiles.length >= 6, `Found ${migrationFiles.length} version-controlled SQL migration files (expected >= 6)`);
+  assert(migrationFiles.length >= 7, `Found ${migrationFiles.length} version-controlled SQL migration files (expected >= 7)`);
 
   const combinedSql = migrationFiles
     .map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8'))
@@ -232,6 +232,245 @@ async function runTestSuite() {
   };
   assert(canStaffUpdateAssignedJob('user-staff-1', userStaffSoc1), 'Assigned in-house maintenance staff can update their own job');
   assert(!canStaffUpdateAssignedJob('user-staff-2', userStaffSoc1), 'Maintenance staff cannot modify jobs assigned to another worker');
+
+  // ----------------------------------------------------------------------------
+  // SECTION 7: Migration 7 Security Refinements & Relational Integrity (Static Checks)
+  // ----------------------------------------------------------------------------
+  console.log('\n[Section 7] Verifying Migration 7 Security Refinements & Relational Constraints:');
+
+  // 1. Helper function public.shares_society_with
+  assert(/FUNCTION\s+public\.shares_society_with\b/i.test(combinedSql), "Helper function 'public.shares_society_with' defined");
+  assert(/FUNCTION\s+public\.shares_society_with[\s\S]+?SECURITY\s+DEFINER\s+SET\s+search_path\s*=\s*public/i.test(combinedSql), "shares_society_with has safe search_path = public and SECURITY DEFINER");
+  assert(/REVOKE\s+EXECUTE\s+ON\s+FUNCTION\s+public\.shares_society_with\(uuid\)\s+FROM\s+PUBLIC/i.test(combinedSql), "EXECUTE privilege on shares_society_with revoked from PUBLIC");
+  assert(/GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.shares_society_with\(uuid\)\s+TO\s+authenticated/i.test(combinedSql), "EXECUTE privilege on shares_society_with granted to authenticated");
+
+  // 2. Admin Staff Enrollment Policy
+  assert(/CREATE\s+POLICY\s+"memberships_insert_admin"\s+ON\s+public\.society_memberships/i.test(combinedSql), "Admin staff enrollment policy 'memberships_insert_admin' defined");
+  assert(/memberships_insert_admin[^;]+role\s+IN\s*\(\s*'resident'\s*,\s*'maintenance_staff'\s*,\s*'supervisor'\s*\)/is.test(combinedSql), "memberships_insert_admin restricts roles strictly to permitted in-house staff/residents");
+
+  // 3. Complaint Update Immutability Trigger & WITH CHECK Policy
+  assert(/FUNCTION\s+public\.check_complaint_immutable_fields\b/i.test(combinedSql), "Complaint field immutability function 'check_complaint_immutable_fields' defined");
+  assert(/TRIGGER\s+trg_complaints_immutable_fields\b/i.test(combinedSql), "Complaint immutability trigger attached to public.complaints");
+  assert(/CREATE\s+POLICY\s+"complaints_update"\s+ON\s+public\.complaints[^;]+WITH\s+CHECK/is.test(combinedSql), "complaints_update policy enforces explicit WITH CHECK authorization");
+
+  // 4. Automated Status Attribution (actor_id nullable)
+  assert(/ALTER\s+TABLE\s+public\.complaint_status_history\s+ALTER\s+COLUMN\s+actor_id\s+DROP\s+NOT\s+NULL/i.test(combinedSql), "complaint_status_history.actor_id altered to allow NULL for automated transitions");
+  assert(/v_actor_id\s*:=\s*NULL/i.test(combinedSql), "log_complaint_status_transition trigger sets actor_id = NULL on automated transitions");
+
+  // 5. Composite Constraints for Multi-Tenant Integrity
+  const compositeUniqueKeys = [
+    'uq_buildings_id_society',
+    'uq_departments_id_society',
+    'uq_complaints_id_society',
+    'uq_schedules_id_society',
+    'uq_categories_id_society'
+  ];
+  for (const uq of compositeUniqueKeys) {
+    assert(new RegExp(`CONSTRAINT\\s+${uq}\\s+UNIQUE\\s*\\(\\s*(id,\\s*society_id|society_id,\\s*id)\\s*\\)`, 'i').test(combinedSql), `Composite unique constraint '${uq}' defined`);
+  }
+
+  const compositeForeignKeys = [
+    'fk_flats_building_society',
+    'fk_categories_department_society',
+    'fk_assignments_complaint_society',
+    'fk_attachments_complaint_society',
+    'fk_comments_complaint_society',
+    'fk_status_history_complaint_society',
+    'fk_verifications_complaint_society',
+    'fk_records_schedule_society',
+    'fk_complaints_building_society',
+    'fk_complaints_category_society'
+  ];
+  for (const fk of compositeForeignKeys) {
+    assert(new RegExp(`CONSTRAINT\\s+${fk}\\s+FOREIGN\\s+KEY`, 'i').test(combinedSql), `Composite foreign key constraint '${fk}' defined`);
+  }
+
+  // ----------------------------------------------------------------------------
+  // SECTION 8: Simulated Phase 2.2 Hardening Verification
+  // ----------------------------------------------------------------------------
+  console.log('\n[Section 8] Simulating Phase 2.2 Hardening Logic:');
+
+  // Simulation 1: Co-member profile visibility & enumeration prevention
+  const simulateSharesSocietyWith = (requestingUser: MockUser, targetUserId: string, allUsers: MockUser[]) => {
+    if (!requestingUser.id || !targetUserId) return false;
+    if (requestingUser.id === targetUserId) return true;
+    const targetUser = allUsers.find(u => u.id === targetUserId);
+    if (!targetUser) return false;
+
+    // Check shared active society membership
+    return requestingUser.memberships.some(m1 => 
+      m1.status === 'active' && 
+      targetUser.memberships.some(m2 => m2.society_id === m1.society_id && m2.status === 'active')
+    );
+  };
+
+  const userResident2Soc1: MockUser = {
+    id: 'user-resident-2',
+    is_platform_admin: false,
+    memberships: [{ society_id: 'soc-1', role: 'resident', status: 'active' }],
+  };
+
+  const userResidentSoc2: MockUser = {
+    id: 'user-resident-soc2',
+    is_platform_admin: false,
+    memberships: [{ society_id: 'soc-2', role: 'resident', status: 'active' }],
+  };
+
+  const directoryUsers = [userResidentSoc1, userResident2Soc1, userStaffSoc1, userAdminSoc1, userResidentSoc2];
+
+  assert(
+    simulateSharesSocietyWith(userResidentSoc1, userStaffSoc1.id, directoryUsers),
+    'Resident can resolve profile of assigned in-house staff member in their society'
+  );
+  assert(
+    simulateSharesSocietyWith(userResidentSoc1, userResident2Soc1.id, directoryUsers),
+    'Resident can resolve co-member profile in the same society'
+  );
+  assert(
+    !simulateSharesSocietyWith(userResidentSoc1, userResidentSoc2.id, directoryUsers),
+    'Resident cannot enumerate or access profiles of users in unrelated societies'
+  );
+
+  // Simulation 2: Administrative Staff Enrollment Rules
+  const simulateAdminEnrollment = (adminUser: MockUser, targetSocId: string, targetRole: string, targetStatus: string) => {
+    const adminRole = simulateGetRole(adminUser, targetSocId);
+    if (adminRole !== 'society_admin') return false;
+    // Rule: role IN ('resident', 'maintenance_staff', 'supervisor') AND status IN ('pending', 'active')
+    const allowedRoles = ['resident', 'maintenance_staff', 'supervisor'];
+    const allowedStatuses = ['pending', 'active'];
+    return allowedRoles.includes(targetRole) && allowedStatuses.includes(targetStatus);
+  };
+
+  assert(
+    simulateAdminEnrollment(userAdminSoc1, 'soc-1', 'maintenance_staff', 'active'),
+    'Society administrator can enroll in-house maintenance staff with active status'
+  );
+  assert(
+    simulateAdminEnrollment(userAdminSoc1, 'soc-1', 'supervisor', 'pending'),
+    'Society administrator can enroll supervisor with pending status'
+  );
+  assert(
+    !simulateAdminEnrollment(userAdminSoc1, 'soc-1', 'society_admin', 'active'),
+    'Society administrator cannot assign society_admin role through staff enrollment policy'
+  );
+  assert(
+    !simulateAdminEnrollment(userResidentSoc1, 'soc-1', 'maintenance_staff', 'active'),
+    'Resident cannot enroll maintenance staff'
+  );
+
+  // Simulation 3: Complaint Update Immutability & WITH CHECK Protection
+  interface UpdateComplaintAttempt {
+    originalComplaint: MockComplaint;
+    updatedSocietyId: string;
+    updatedCitizenId: string;
+    updatedStatus: string;
+    requestingUser: MockUser;
+  }
+
+  const simulateComplaintUpdate = (attempt: UpdateComplaintAttempt): { allowed: boolean; reason?: string } => {
+    // 1. Immutability trigger checks
+    if (attempt.updatedSocietyId !== attempt.originalComplaint.society_id) {
+      return { allowed: false, reason: 'Cannot transfer complaints across societies (society_id is immutable)' };
+    }
+    if (attempt.updatedCitizenId !== attempt.originalComplaint.citizen_id) {
+      return { allowed: false, reason: 'Cannot change original complainant (citizen_id is immutable)' };
+    }
+
+    // 2. RLS WITH CHECK checks
+    const reqRole = simulateGetRole(attempt.requestingUser, attempt.originalComplaint.society_id);
+    const isCitizenAuthor = attempt.requestingUser.id === attempt.originalComplaint.citizen_id;
+    const isAssignedStaff = reqRole === 'maintenance_staff' && attempt.originalComplaint.assigned_to === attempt.requestingUser.id;
+    const isAdminOrSupervisor = reqRole === 'society_admin' || reqRole === 'supervisor';
+
+    if (isCitizenAuthor) {
+      const citizenAllowedStatuses = ['submitted', 'awaiting_citizen_response', 'reopened'];
+      if (!citizenAllowedStatuses.includes(attempt.updatedStatus)) {
+        return { allowed: false, reason: 'Citizen cannot update complaint to protected status' };
+      }
+      return { allowed: true };
+    }
+
+    if (isAssignedStaff || isAdminOrSupervisor) {
+      return { allowed: true };
+    }
+
+    return { allowed: false, reason: 'Unauthorized to update complaint' };
+  };
+
+  // Attempt A: Resident attempts to transfer complaint to soc-2
+  const transferAttempt = simulateComplaintUpdate({
+    originalComplaint: complaintSoc1,
+    updatedSocietyId: 'soc-2',
+    updatedCitizenId: userResidentSoc1.id,
+    updatedStatus: 'submitted',
+    requestingUser: userResidentSoc1,
+  });
+  assert(!transferAttempt.allowed, 'Resident cannot transfer complaints across societies');
+
+  // Attempt B: Resident attempts to alter original complainant
+  const complainantChangeAttempt = simulateComplaintUpdate({
+    originalComplaint: complaintSoc1,
+    updatedSocietyId: 'soc-1',
+    updatedCitizenId: 'user-other',
+    updatedStatus: 'submitted',
+    requestingUser: userResidentSoc1,
+  });
+  assert(!complainantChangeAttempt.allowed, 'Resident cannot change original complainant citizen_id');
+
+  // Attempt C: Resident attempts to self-close or self-resolve complaint
+  const selfResolveAttempt = simulateComplaintUpdate({
+    originalComplaint: complaintSoc1,
+    updatedSocietyId: 'soc-1',
+    updatedCitizenId: userResidentSoc1.id,
+    updatedStatus: 'resolved',
+    requestingUser: userResidentSoc1,
+  });
+  assert(!selfResolveAttempt.allowed, 'Resident cannot self-mark complaint as resolved');
+
+  // Attempt D: Assigned staff updates operational status legitimately
+  const staffLegitimateUpdate = simulateComplaintUpdate({
+    originalComplaint: complaintSoc1,
+    updatedSocietyId: 'soc-1',
+    updatedCitizenId: userResidentSoc1.id,
+    updatedStatus: 'in_progress',
+    requestingUser: userStaffSoc1,
+  });
+  assert(staffLegitimateUpdate.allowed, 'Assigned maintenance staff can legitimately update complaint status');
+
+  // Simulation 4: Status Transition Attribution Accuracy
+  const simulateStatusTransitionAttribution = (authUid: string | null, citizenId: string) => {
+    if (authUid !== null) {
+      return { actor_id: authUid, isAutomated: false };
+    } else {
+      return { actor_id: null, isAutomated: true };
+    }
+  };
+
+  const authTransition = simulateStatusTransitionAttribution(userStaffSoc1.id, complaintSoc1.citizen_id);
+  assert(authTransition.actor_id === userStaffSoc1.id, 'Authenticated status transition accurately attributes actor_id');
+
+  const automatedTransition = simulateStatusTransitionAttribution(null, complaintSoc1.citizen_id);
+  assert(automatedTransition.actor_id === null, 'Automated/system status transition records actor_id as NULL (never citizen)');
+
+  // Simulation 5: Relational Integrity (Composite Keys Cross-Society Check)
+  interface MockBuilding { id: string; society_id: string; }
+  interface MockFlat { id: string; building_id: string; society_id: string; }
+
+  const mockBuildings: MockBuilding[] = [
+    { id: 'bldg-1', society_id: 'soc-1' },
+    { id: 'bldg-2', society_id: 'soc-2' },
+  ];
+
+  const simulateInsertFlat = (flat: MockFlat) => {
+    // Composite FK: FOREIGN KEY (building_id, society_id) REFERENCES buildings(id, society_id)
+    return mockBuildings.some(b => b.id === flat.building_id && b.society_id === flat.society_id);
+  };
+
+  const validFlat: MockFlat = { id: 'flat-101', building_id: 'bldg-1', society_id: 'soc-1' };
+  const invalidCrossTenantFlat: MockFlat = { id: 'flat-201', building_id: 'bldg-2', society_id: 'soc-1' };
+
+  assert(simulateInsertFlat(validFlat), 'Flat within the same society as building is accepted');
+  assert(!simulateInsertFlat(invalidCrossTenantFlat), 'Cross-society flat reference is rejected by composite foreign key');
 
   // ----------------------------------------------------------------------------
   // SUMMARY

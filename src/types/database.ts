@@ -227,7 +227,7 @@ export interface ComplaintStatusHistory {
   id: string;
   complaint_id: string;
   society_id: string;
-  actor_id: string;
+  actor_id?: string | null;
   previous_status?: string | null;
   new_status: string;
   remarks: string;
