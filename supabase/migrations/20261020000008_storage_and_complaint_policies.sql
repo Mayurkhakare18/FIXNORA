@@ -32,6 +32,7 @@ END $$;
 -- ------------------------------------------------------------------------------
 -- 2. Storage Objects RLS Policies for 'complaint-evidence'
 -- ------------------------------------------------------------------------------
+-- Note: storage.objects ENABLE ROW LEVEL SECURITY is managed by Supabase storage extension
 -- Enable RLS on storage.objects if not already enabled
 DO $$
 BEGIN
