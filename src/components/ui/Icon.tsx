@@ -23,7 +23,9 @@ export type IconName =
   | 'mail'
   | 'plus'
   | 'refresh-cw'
-  | 'user-check';
+  | 'user-check'
+  | 'download'
+  | 'paperclip';
 
 const PATHS: Record<IconName, string> = {
   check: "M4 12.5l5 5L20 6",
@@ -49,6 +51,8 @@ const PATHS: Record<IconName, string> = {
   plus: "M12 5v14M5 12h14",
   'refresh-cw': "M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15",
   'user-check': "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM16 11l2 2 4-4",
+  download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
+  paperclip: "M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48",
 };
 
 interface IconProps {
