@@ -8,6 +8,8 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Card, Btn, Pill, Row, STAGES } from '../../components/ui/Primitives';
 import { Icon } from '../../components/ui/Icon';
+import { useAuth } from '../../context/AuthContext';
+import { submitResidentResolutionReview } from '../../lib/resolutionService';
 import {
   lookupComplaintByTrackingId,
   createAttachmentSignedUrl,
@@ -26,12 +28,27 @@ export const ComplaintTrackingPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const idFromUrl = searchParams.get('id') || '';
   const [searchInput, setSearchInput] = useState(idFromUrl);
+  const { user, currentSociety } = useAuth();
   const [activeTrackingId, setActiveTrackingId] = useState(idFromUrl);
 
   const [isLoading, setIsLoading] = useState(false);
   const [complaint, setComplaint] = useState<ComplaintWithRelations | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+
+  // Review & Reopen Modal States
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [rating, setRating] = useState<number>(5);
+  const [satisfactionLevel, setSatisfactionLevel] = useState<
+    'very_satisfied' | 'satisfied' | 'neutral' | 'dissatisfied' | 'very_dissatisfied'
+  >('very_satisfied');
+  const [feedbackText, setFeedbackText] = useState('');
+  const [verificationNotes, setVerificationNotes] = useState('');
+  const [reopenReason, setReopenReason] = useState('');
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (idFromUrl) {
@@ -82,6 +99,59 @@ export const ComplaintTrackingPage: React.FC = () => {
       alert('Failed to retrieve file.');
     } finally {
       setDownloadingFile(null);
+    }
+  };
+
+  const handleVerifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!complaint || !user || !currentSociety) return;
+    setIsSubmittingAction(true);
+    setActionError(null);
+    try {
+      await submitResidentResolutionReview({
+        complaintId: complaint.id,
+        societyId: currentSociety.id,
+        residentId: user.id,
+        isSatisfied: true,
+        rating,
+        satisfactionLevel,
+        feedbackText,
+        verificationNotes,
+      });
+      setActionSuccess('Resolution verified and closed satisfactorily!');
+      setShowReviewModal(false);
+      await fetchComplaint(complaint.tracking_id);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to submit verification.');
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
+  const handleReopenSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!complaint || !user || !currentSociety) return;
+    if (!reopenReason.trim() || reopenReason.trim().length < 10) {
+      setActionError('Minimum 10 characters explanation is required.');
+      return;
+    }
+    setIsSubmittingAction(true);
+    setActionError(null);
+    try {
+      await submitResidentResolutionReview({
+        complaintId: complaint.id,
+        societyId: currentSociety.id,
+        residentId: user.id,
+        isSatisfied: false,
+        verificationNotes: reopenReason.trim(),
+      });
+      setActionSuccess('Complaint has been reopened and queued for technician follow-up.');
+      setShowReopenModal(false);
+      await fetchComplaint(complaint.tracking_id);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to reopen complaint.');
+    } finally {
+      setIsSubmittingAction(false);
     }
   };
 
@@ -140,6 +210,23 @@ export const ComplaintTrackingPage: React.FC = () => {
         {!isSupabaseConfigured && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900">
             <strong>Configuration Notice:</strong> Supabase credentials are not configured in <code className="font-mono">.env</code>. Real database lookups will be unavailable until credentials are provided.
+          </div>
+        )}
+
+        {/* Action Success Toast */}
+        {actionSuccess && (
+          <div className="rounded-xl border border-teal/30 bg-teal/10 p-3.5 text-xs text-teal font-medium flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon n="check" s={16} c="shrink-0 text-teal" />
+              <span>{actionSuccess}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActionSuccess(null)}
+              className="text-teal/70 hover:text-teal text-xs font-bold"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -298,6 +385,35 @@ export const ComplaintTrackingPage: React.FC = () => {
                 {complaint.resolution_remarks && (
                   <Row a="Resolution Notes" b={complaint.resolution_remarks} />
                 )}
+                {complaint.sla_target_at && (
+                  <Row
+                    a="SLA Deadline"
+                    b={
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {new Date(complaint.sla_target_at).toLocaleString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        {!['resolved', 'closed', 'rejected'].includes(complaint.status) && (
+                          new Date(complaint.sla_target_at).getTime() < Date.now() ? (
+                            <span className="rounded bg-red-100 text-red-700 px-1.5 py-0.5 text-[10px] font-bold">
+                              BREACHED
+                            </span>
+                          ) : (
+                            <span className="rounded bg-teal/15 text-teal px-1.5 py-0.5 text-[10px] font-bold">
+                              ON TRACK
+                            </span>
+                          )
+                        )}
+                      </div>
+                    }
+                  />
+                )}
               </div>
 
               {/* Description */}
@@ -340,6 +456,126 @@ export const ComplaintTrackingPage: React.FC = () => {
                         </button>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SLA Escalation Notices */}
+              {complaint.escalations && complaint.escalations.length > 0 && (
+                <div className="mt-5 border-t border-bd/60 pt-4 space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-red-600 flex items-center gap-1.5">
+                    <Icon n="alert" s={14} c="text-red-500" />
+                    <span>SLA Escalation History ({complaint.escalations.length})</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {complaint.escalations.map((esc: any) => (
+                      <div
+                        key={esc.id}
+                        className="rounded-lg border border-red-200 bg-red-50/60 p-3 text-xs text-red-800"
+                      >
+                        <div className="flex items-center justify-between font-bold mb-1">
+                          <span>Escalation Tier: Level {esc.escalation_level}</span>
+                          <span className="text-[10px] text-red-600 font-normal">
+                            {new Date(esc.escalated_at).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed">{esc.reason}</p>
+                        <div className="mt-1 text-[10px] text-red-600">
+                          Notified Roles: {esc.notified_roles?.join(', ')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Resident Verification Outcome & Feedback */}
+              {complaint.verification && (
+                <div className="mt-5 border-t border-bd/60 pt-4">
+                  <div
+                    className={`rounded-xl p-4 border ${
+                      complaint.verification.is_satisfied
+                        ? 'border-teal/30 bg-teal/5'
+                        : 'border-amber-200 bg-amber-50/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-navy flex items-center gap-1.5">
+                        <Icon
+                          n={complaint.verification.is_satisfied ? 'check' : 'refresh-cw'}
+                          s={16}
+                          c={complaint.verification.is_satisfied ? 'text-teal' : 'text-amber-600'}
+                        />
+                        <span>
+                          Resident Verification:{' '}
+                          {complaint.verification.is_satisfied
+                            ? 'Satisfactorily Confirmed'
+                            : 'Reopen Requested'}
+                        </span>
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {new Date(complaint.verification.verified_at).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    {complaint.verification.verification_notes && (
+                      <p className="text-xs text-muted-foreground mt-1 bg-card/80 p-2.5 rounded-lg border border-bd/40">
+                        "{complaint.verification.verification_notes}"
+                      </p>
+                    )}
+                    {complaint.feedback && (
+                      <div className="mt-3 pt-3 border-t border-bd/40 flex items-center gap-3 text-xs">
+                        <span className="font-bold text-amber-500 text-sm">
+                          {'★'.repeat(complaint.feedback.rating)}
+                          {'☆'.repeat(5 - complaint.feedback.rating)}
+                        </span>
+                        <span className="text-muted-foreground capitalize">
+                          ({complaint.feedback.satisfaction_level.replace(/_/g, ' ')})
+                        </span>
+                        {complaint.feedback.feedback_text && (
+                          <span className="text-navy italic truncate">
+                            — "{complaint.feedback.feedback_text}"
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Complainant Action Required: Verify or Reopen */}
+              {complaint.status === 'resolved' && user?.id === complaint.citizen_id && (
+                <div className="mt-5 border-t border-bd/60 pt-4">
+                  <div className="rounded-xl border-2 border-teal/40 bg-teal/5 p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-teal">
+                        Resident Action Required
+                      </div>
+                      <p className="text-xs text-navy font-semibold mt-0.5">
+                        Repair completed. Please verify work outcome and submit feedback.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionError(null);
+                          setShowReviewModal(true);
+                        }}
+                        className="rounded-lg bg-teal px-4 py-2 text-xs font-semibold text-white hover:bg-teal/90 transition shadow-sm"
+                      >
+                        Confirm Fixed & Rate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionError(null);
+                          setShowReopenModal(true);
+                        }}
+                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+                      >
+                        Issue Persists
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -464,6 +700,191 @@ export const ComplaintTrackingPage: React.FC = () => {
               </Link>
             </div>
           </Card>
+        )}
+
+        {/* MODAL 1: Confirm Resolution & Feedback */}
+        {showReviewModal && complaint && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="relative w-full max-w-lg rounded-2xl border border-bd bg-card p-6 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-bd/60 pb-3 mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-navy">Confirm Resolution & Rate</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Ticket #{complaint.tracking_id} • {complaint.title}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReviewModal(false)}
+                  className="text-muted-foreground hover:text-navy text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {actionError && (
+                <div className="rounded-lg bg-red-50 p-3 text-xs text-red-700 border border-red-200 mb-4">
+                  {actionError}
+                </div>
+              )}
+
+              <form onSubmit={handleVerifySubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-navy mb-2">
+                    Overall Rating (1 to 5 Stars) *
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        className="p-1 text-2xl transition hover:scale-110 focus:outline-none"
+                      >
+                        <span className={star <= rating ? "text-amber-400" : "text-gray-300"}>
+                          ★
+                        </span>
+                      </button>
+                    ))}
+                    <span className="ml-2 text-xs font-semibold text-navy">
+                      {rating === 5 ? 'Excellent' : rating === 4 ? 'Good' : rating === 3 ? 'Average' : rating === 2 ? 'Poor' : 'Very Poor'}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
+                    Satisfaction Level
+                  </label>
+                  <select
+                    value={satisfactionLevel}
+                    onChange={(e) => setSatisfactionLevel(e.target.value as any)}
+                    className="w-full rounded-lg border border-bd bg-background px-3 py-2 text-xs text-navy focus:border-teal focus:outline-none"
+                  >
+                    <option value="very_satisfied">Very Satisfied</option>
+                    <option value="satisfied">Satisfied</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="dissatisfied">Dissatisfied</option>
+                    <option value="very_dissatisfied">Very Dissatisfied</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
+                    Verification Notes (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={verificationNotes}
+                    onChange={(e) => setVerificationNotes(e.target.value)}
+                    placeholder="e.g. Verified tap repair, functioning normally..."
+                    className="w-full rounded-lg border border-bd bg-background px-3 py-2 text-xs text-navy placeholder:text-muted-foreground/50 focus:border-teal focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
+                    Comments / Review (Optional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Share feedback on technician work..."
+                    className="w-full rounded-lg border border-bd bg-background p-3 text-xs text-navy placeholder:text-muted-foreground/50 focus:border-teal focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-bd/60">
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewModal(false)}
+                    className="rounded-lg border border-bd px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-soft transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingAction}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-teal px-5 py-2 text-xs font-semibold text-white hover:bg-teal/90 transition shadow-sm disabled:opacity-50"
+                  >
+                    <Icon n="check" s={14} />
+                    <span>{isSubmittingAction ? 'Submitting...' : 'Confirm Resolution & Close'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 2: Issue Persists / Request Reopen */}
+        {showReopenModal && complaint && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="relative w-full max-w-lg rounded-2xl border border-bd bg-card p-6 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-bd/60 pb-3 mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-navy">Request Reopening</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Ticket #{complaint.tracking_id} • {complaint.title}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReopenModal(false)}
+                  className="text-muted-foreground hover:text-navy text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {actionError && (
+                <div className="rounded-lg bg-red-50 p-3 text-xs text-red-700 border border-red-200 mb-4">
+                  {actionError}
+                </div>
+              )}
+
+              <form onSubmit={handleReopenSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
+                    Why does this issue persist? (Required, min 10 characters) *
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={reopenReason}
+                    onChange={(e) => setReopenReason(e.target.value)}
+                    placeholder="Describe what is still unresolved or if the fault recurred..."
+                    className="w-full rounded-lg border border-bd bg-background p-3 text-xs text-navy placeholder:text-muted-foreground/50 focus:border-red-400 focus:outline-none"
+                  />
+                  <span className="text-[11px] text-muted-foreground">
+                    {reopenReason.length}/10 characters minimum
+                  </span>
+                </div>
+
+                <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 border border-amber-200">
+                  Submitting will reopen this ticket and immediately notify supervisors to assign follow-up repair.
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-bd/60">
+                  <button
+                    type="button"
+                    onClick={() => setShowReopenModal(false)}
+                    className="rounded-lg border border-bd px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-soft transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingAction || reopenReason.trim().length < 10}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-5 py-2 text-xs font-semibold text-white hover:bg-red-700 transition shadow-sm disabled:opacity-50"
+                  >
+                    <Icon n="refresh-cw" s={14} />
+                    <span>{isSubmittingAction ? 'Reopening...' : 'Submit Reopen Request'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>

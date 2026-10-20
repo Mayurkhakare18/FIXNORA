@@ -242,7 +242,13 @@ export const DepartmentDashboard: React.FC = () => {
   const totalCount = complaints.length;
   const unassignedCount = complaints.filter((c) => c.status === 'submitted').length;
   const inProgressCount = complaints.filter((c) => ['assigned', 'in_progress'].includes(c.status)).length;
-  const resolvedCount = complaints.filter((c) => ['resolved', 'closed'].includes(c.status)).length;
+  const pendingVerifCount = complaints.filter((c) => c.status === 'resolved').length;
+  const overdueCount = complaints.filter(
+    (c) =>
+      !['resolved', 'closed', 'rejected'].includes(c.status) &&
+      c.sla_target_at &&
+      new Date(c.sla_target_at).getTime() < Date.now()
+  ).length;
 
   const getStatusPillTone = (status: string): 'n' | 'h' | 't' | 'w' => {
     switch (status) {
@@ -253,6 +259,7 @@ export const DepartmentDashboard: React.FC = () => {
       case 'assigned':
         return 'n';
       case 'rejected':
+      case 'reopened':
         return 'h';
       default:
         return 'w';
@@ -302,10 +309,10 @@ export const DepartmentDashboard: React.FC = () => {
         )}
 
         {/* Workload Overview Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <Card className="p-4 shadow-sm">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Total Complaints
+              Total
             </div>
             <div className="mt-2 text-2xl font-bold text-navy">
               {isLoading ? '...' : totalCount}
@@ -314,7 +321,7 @@ export const DepartmentDashboard: React.FC = () => {
           </Card>
           <Card className="p-4 shadow-sm">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Unassigned / New
+              Unassigned
             </div>
             <div className="mt-2 text-2xl font-bold text-amber-600">
               {isLoading ? '...' : unassignedCount}
@@ -323,21 +330,30 @@ export const DepartmentDashboard: React.FC = () => {
           </Card>
           <Card className="p-4 shadow-sm">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Under Active Work
+              In Progress
             </div>
             <div className="mt-2 text-2xl font-bold text-brand">
               {isLoading ? '...' : inProgressCount}
             </div>
-            <div className="mt-1 text-[11px] text-muted-foreground">Assigned & in-progress</div>
+            <div className="mt-1 text-[11px] text-muted-foreground">Active repairs</div>
           </Card>
           <Card className="p-4 shadow-sm">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Resolved
+            <div className="text-xs font-semibold text-red-600 uppercase tracking-wider">
+              SLA Overdue
+            </div>
+            <div className="mt-2 text-2xl font-bold text-red-600">
+              {isLoading ? '...' : overdueCount}
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground">Breached SLA targets</div>
+          </Card>
+          <Card className="p-4 shadow-sm">
+            <div className="text-xs font-semibold text-teal uppercase tracking-wider">
+              Pending Review
             </div>
             <div className="mt-2 text-2xl font-bold text-teal">
-              {isLoading ? '...' : resolvedCount}
+              {isLoading ? '...' : pendingVerifCount}
             </div>
-            <div className="mt-1 text-[11px] text-muted-foreground">Fixed by in-house staff</div>
+            <div className="mt-1 text-[11px] text-muted-foreground">Fixed • Awaiting resident</div>
           </Card>
         </div>
 

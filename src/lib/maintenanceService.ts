@@ -4,6 +4,7 @@
 // ==============================================================================
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { createNotification } from './notificationService';
 import type {
   ComplaintAssignment,
   MaintenanceJob,
@@ -165,6 +166,37 @@ export async function assignComplaintToStaff(params: {
     .update({ status: 'assigned' })
     .eq('id', params.complaintId);
 
+  // Dispatch assignment notifications
+  try {
+    await createNotification({
+      societyId: params.societyId,
+      recipientId: params.staffUserId,
+      complaintId: params.complaintId,
+      title: 'New Maintenance Assignment',
+      message: `You have been assigned to: "${params.complaintTitle || 'Maintenance Request'}".`,
+      notificationType: 'assigned',
+    });
+
+    const { data: comp } = await supabase
+      .from('complaints')
+      .select('citizen_id, tracking_id')
+      .eq('id', params.complaintId)
+      .single();
+
+    if (comp?.citizen_id) {
+      await createNotification({
+        societyId: params.societyId,
+        recipientId: comp.citizen_id,
+        complaintId: params.complaintId,
+        title: 'Technician Assigned',
+        message: `Your complaint #${comp.tracking_id} has been assigned to an in-house maintenance technician.`,
+        notificationType: 'assigned',
+      });
+    }
+  } catch (notifErr) {
+    console.warn('Assignment notification notice:', notifErr);
+  }
+
   return {
     assignment: assignmentData as ComplaintAssignment,
     job: jobData as MaintenanceJob,
@@ -243,6 +275,37 @@ export async function reassignComplaint(params: {
       status: 'pending',
     },
   ]);
+
+  // Dispatch reassignment notifications
+  try {
+    await createNotification({
+      societyId: params.societyId,
+      recipientId: params.newStaffUserId,
+      complaintId: params.complaintId,
+      title: 'Reassigned Maintenance Task',
+      message: `You have been assigned ticket #${params.complaintId.slice(0, 8)}. Reason: ${params.reason.trim()}`,
+      notificationType: 'assigned',
+    });
+
+    const { data: comp } = await supabase
+      .from('complaints')
+      .select('citizen_id, tracking_id')
+      .eq('id', params.complaintId)
+      .single();
+
+    if (comp?.citizen_id) {
+      await createNotification({
+        societyId: params.societyId,
+        recipientId: comp.citizen_id,
+        complaintId: params.complaintId,
+        title: 'Technician Reassigned',
+        message: `Your complaint #${comp.tracking_id} has been reassigned to another technician. Reason: ${params.reason.trim()}`,
+        notificationType: 'assigned',
+      });
+    }
+  } catch (notifErr) {
+    console.warn('Reassignment notification notice:', notifErr);
+  }
 
   return newAssignment as ComplaintAssignment;
 }
@@ -392,6 +455,28 @@ export async function startJobWork(params: {
   if (error) {
     throw new Error(`Failed to update complaint to in_progress: ${error.message}`);
   }
+
+  // Dispatch work commencement notification to resident
+  try {
+    const { data: comp } = await supabase
+      .from('complaints')
+      .select('society_id, citizen_id, tracking_id')
+      .eq('id', params.complaintId)
+      .single();
+
+    if (comp?.citizen_id) {
+      await createNotification({
+        societyId: comp.society_id,
+        recipientId: comp.citizen_id,
+        complaintId: params.complaintId,
+        title: 'Work Commenced',
+        message: `Maintenance staff has started work on complaint #${comp.tracking_id}.`,
+        notificationType: 'status_changed',
+      });
+    }
+  } catch (notifErr) {
+    console.warn('Start job notification notice:', notifErr);
+  }
 }
 
 /**
@@ -452,6 +537,28 @@ export async function completeJobWork(params: {
 
   if (error) {
     throw new Error(`Failed to resolve complaint: ${error.message}`);
+  }
+
+  // 4. Dispatch notification to resident: ready for resolution review
+  try {
+    const { data: comp } = await supabase
+      .from('complaints')
+      .select('society_id, citizen_id, tracking_id, title')
+      .eq('id', params.complaintId)
+      .single();
+
+    if (comp?.citizen_id) {
+      await createNotification({
+        societyId: comp.society_id,
+        recipientId: comp.citizen_id,
+        complaintId: params.complaintId,
+        title: 'Work Completed — Verification Needed',
+        message: `Your complaint #${comp.tracking_id} ("${comp.title}") has been marked resolved. Please confirm resolution or request reopening.`,
+        notificationType: 'resolved',
+      });
+    }
+  } catch (notifErr) {
+    console.warn('Resolution notification notice:', notifErr);
   }
 }
 

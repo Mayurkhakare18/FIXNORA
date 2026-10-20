@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Icon, IconName } from '../ui/Icon';
 import { Pill, cn } from '../ui/Primitives';
 import { Language } from '../../i18n/translations';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 interface NavItem {
   label: string;
@@ -80,6 +81,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
           {/* Right Controls */}
           <div className="flex items-center gap-3">
+            {/* Genuine In-App Notification Bell */}
+            <NotificationBell />
+
             {/* Language Selector */}
             <select
               aria-label="Language"

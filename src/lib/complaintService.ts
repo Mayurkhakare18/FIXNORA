@@ -4,6 +4,7 @@
 // ==============================================================================
 
 import { supabase, isSupabaseConfigured } from './supabase';
+import { createNotification } from './notificationService';
 import type {
   Complaint,
   ComplaintCategory,
@@ -52,6 +53,9 @@ export interface ComplaintWithRelations extends Complaint {
   attachments?: ComplaintAttachment[];
   history?: ComplaintStatusHistory[];
   comments?: ComplaintComment[];
+  verification?: any | null;
+  feedback?: any | null;
+  escalations?: any[];
 }
 
 export interface ResidentDashboardData {
@@ -168,7 +172,23 @@ export async function submitComplaint(
     throw new Error(`Failed to submit complaint: ${error.message}`);
   }
 
-  return data as Complaint;
+  const createdComplaint = data as Complaint;
+
+  // Dispatch submission confirmation notification to resident
+  try {
+    await createNotification({
+      societyId: input.societyId,
+      recipientId: input.citizenId,
+      complaintId: createdComplaint.id,
+      title: 'Complaint Registered',
+      message: `Your complaint #${createdComplaint.tracking_id} ("${createdComplaint.title}") has been registered and is under review.`,
+      notificationType: 'complaint_submitted',
+    });
+  } catch (notifErr) {
+    console.warn('Submission notification notice:', notifErr);
+  }
+
+  return createdComplaint;
 }
 
 /**
@@ -310,8 +330,8 @@ export async function lookupComplaintByTrackingId(
     return null;
   }
 
-  // Load status history, public comments, and attachments in parallel
-  const [historyRes, commentsRes, attachmentsRes] = await Promise.all([
+  // Load status history, public comments, attachments, verifications, feedback, and escalations in parallel
+  const [historyRes, commentsRes, attachmentsRes, verifRes, feedbackRes, escalationsRes] = await Promise.all([
     supabase
       .from('complaint_status_history')
       .select('*')
@@ -328,6 +348,23 @@ export async function lookupComplaintByTrackingId(
       .select('*')
       .eq('complaint_id', complaint.id)
       .order('created_at', { ascending: true }),
+    supabase
+      .from('resolution_verifications')
+      .select('*')
+      .eq('complaint_id', complaint.id)
+      .order('verified_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('complaint_feedback')
+      .select('*')
+      .eq('complaint_id', complaint.id)
+      .maybeSingle(),
+    supabase
+      .from('complaint_escalations')
+      .select('*')
+      .eq('complaint_id', complaint.id)
+      .order('escalated_at', { ascending: true }),
   ]);
 
   return {
@@ -335,6 +372,9 @@ export async function lookupComplaintByTrackingId(
     history: (historyRes.data || []) as ComplaintStatusHistory[],
     comments: (commentsRes.data || []) as ComplaintComment[],
     attachments: (attachmentsRes.data || []) as ComplaintAttachment[],
+    verification: verifRes.data || null,
+    feedback: feedbackRes.data || null,
+    escalations: escalationsRes.data || [],
   } as ComplaintWithRelations;
 }
 
