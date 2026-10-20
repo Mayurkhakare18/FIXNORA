@@ -45,16 +45,19 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
-      // Redirect by membership state
-      if (memberships.length === 0) {
+      // Redirect by freshly fetched membership state
+      const userMems = result.memberships ?? memberships;
+      const activeMem = result.currentMembership ?? userMems.find((m) => m.status === 'active') ?? userMems[0] ?? currentMembership;
+
+      if (userMems.length === 0) {
         navigate('/onboarding/join-society', { replace: true });
-      } else if (currentMembership?.status === 'pending') {
+      } else if (activeMem?.status === 'pending') {
         navigate('/onboarding/pending-status', { replace: true });
-      } else if (currentMembership?.role === 'society_admin') {
+      } else if (activeMem?.role === 'society_admin') {
         navigate('/dashboard/admin', { replace: true });
-      } else if (currentMembership?.role === 'maintenance_staff') {
+      } else if (activeMem?.role === 'maintenance_staff') {
         navigate('/dashboard/officer', { replace: true });
-      } else if (currentMembership?.role === 'supervisor') {
+      } else if (activeMem?.role === 'supervisor') {
         navigate('/dashboard/department', { replace: true });
       } else {
         navigate('/dashboard/citizen', { replace: true });

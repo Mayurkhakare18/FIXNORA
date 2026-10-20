@@ -20,13 +20,23 @@ export interface AuthContextType {
   isConfigured: boolean;
   error: string | null;
   clearError: () => void;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{
+    success: boolean;
+    error?: string;
+    memberships?: SocietyMembership[];
+    currentMembership?: SocietyMembership | null;
+  }>;
   signUp: (email: string, password: string, fullName: string, preferredLanguage?: 'en' | 'hi' | 'mr') => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   selectSociety: (societyId: string) => void;
-  requestSocietyMembership: (societyId: string, flatId?: string | null) => Promise<{ success: boolean; error?: string }>;
+  requestSocietyMembership: (societyId: string, flatId?: string | null) => Promise<{
+    success: boolean;
+    error?: string;
+    code?: 'ALREADY_ACTIVE' | 'ALREADY_PENDING' | 'MEMBERSHIP_INACTIVE' | 'DUPLICATE_MEMBERSHIP' | 'SERVER_ERROR';
+    existingMembership?: SocietyMembership;
+  }>;
   approveMembership: (membershipId: string) => Promise<{ success: boolean; error?: string }>;
   rejectMembership: (membershipId: string) => Promise<{ success: boolean; error?: string }>;
   enrollStaffMember: (
@@ -94,6 +104,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMemberships(userMemberships);
 
       // 3. Fetch Societies associated with these memberships
+      let loadedSocieties: Society[] = [];
+      let activeMembership: SocietyMembership | null = null;
+      let matchingSociety: Society | null = null;
+
       if (userMemberships.length > 0) {
         const societyIds = Array.from(new Set(userMemberships.map((m) => m.society_id)));
         const { data: societyData, error: socErr } = await supabase
@@ -102,14 +116,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .in('id', societyIds);
 
         if (!socErr && societyData) {
-          const loadedSocieties = societyData as Society[];
+          loadedSocieties = societyData as Society[];
           setSocieties(loadedSocieties);
 
           // Select first active membership by default, or fallback to first pending
-          const activeMembership = userMemberships.find((m) => m.status === 'active') || userMemberships[0];
+          activeMembership = userMemberships.find((m) => m.status === 'active') || userMemberships[0];
           setCurrentMembership(activeMembership);
 
-          const matchingSociety = loadedSocieties.find((s) => s.id === activeMembership.society_id);
+          matchingSociety = loadedSocieties.find((s) => s.id === activeMembership!.society_id) || null;
           if (matchingSociety) {
             setCurrentSociety(matchingSociety);
           }
@@ -119,8 +133,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentSociety(null);
         setCurrentMembership(null);
       }
+
+      return {
+        profile: profileData as Profile | null,
+        memberships: userMemberships,
+        currentMembership: activeMembership,
+        societies: loadedSocieties,
+        currentSociety: matchingSociety,
+      };
     } catch (err: any) {
       console.error('Error fetching user context:', err);
+      return null;
     }
   }, []);
 
@@ -203,10 +226,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         setUser(data.user);
         setSession(data.session);
-        await fetchUserData(data.user.id);
+        const userContext = await fetchUserData(data.user.id);
+        return {
+          success: true,
+          memberships: userContext?.memberships || [],
+          currentMembership: userContext?.currentMembership || null,
+        };
       }
 
-      return { success: true };
+      return { success: true, memberships: [], currentMembership: null };
     } catch (err: any) {
       const msg = err.message || 'An unexpected error occurred during sign in';
       setError(msg);
@@ -365,29 +393,129 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Request Membership as a Resident (Starts with status = 'pending')
-  const requestSocietyMembership = async (societyId: string, flatId?: string | null) => {
+  const requestSocietyMembership = async (societyId: string, flatNumberOrId?: string | null) => {
     if (!user) return { success: false, error: 'User must be authenticated' };
     if (!isSupabaseConfigured) return { success: false, error: 'Database connection unconfigured' };
 
     try {
+      // 1. Check if user already has a membership record in this society
+      const { data: existing, error: checkError } = await supabase
+        .from('society_memberships')
+        .select('*')
+        .eq('society_id', societyId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.warn('Membership pre-check query notice:', checkError.message);
+      }
+
+      if (existing) {
+        await fetchUserData(user.id);
+        const existingMem = existing as SocietyMembership;
+
+        if (existingMem.status === 'active') {
+          const roleLabel =
+            existingMem.role === 'society_admin'
+              ? 'Administrator'
+              : existingMem.role === 'maintenance_staff'
+              ? 'Maintenance Staff'
+              : existingMem.role === 'supervisor'
+              ? 'Supervisor'
+              : 'Resident';
+
+          return {
+            success: false,
+            code: 'ALREADY_ACTIVE' as const,
+            error: `You are already an approved member (${roleLabel}) of this housing society.`,
+            existingMembership: existingMem,
+          };
+        }
+
+        if (existingMem.status === 'pending') {
+          return {
+            success: false,
+            code: 'ALREADY_PENDING' as const,
+            error: 'Your membership application is already awaiting administrator approval.',
+            existingMembership: existingMem,
+          };
+        }
+
+        if (existingMem.status === 'rejected' || existingMem.status === 'suspended') {
+          return {
+            success: false,
+            code: 'MEMBERSHIP_INACTIVE' as const,
+            error: `Your membership in this society was ${existingMem.status}. Please contact the Society Management Committee.`,
+            existingMembership: existingMem,
+          };
+        }
+      }
+
+      // 2. Resolve flat_id if a flat number or UUID was provided
+      let resolvedFlatId: string | null = null;
+      if (flatNumberOrId && flatNumberOrId.trim()) {
+        const inputVal = flatNumberOrId.trim();
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(inputVal);
+        if (isUuid) {
+          resolvedFlatId = inputVal;
+        } else {
+          const { data: flatMatch } = await supabase
+            .from('flats')
+            .select('id')
+            .eq('society_id', societyId)
+            .ilike('flat_number', inputVal)
+            .maybeSingle();
+
+          if (flatMatch) {
+            resolvedFlatId = flatMatch.id;
+          }
+        }
+      }
+
+      // 3. Insert fresh pending residency application
       const { error: insertError } = await supabase
         .from('society_memberships')
         .insert({
           society_id: societyId,
           user_id: user.id,
-          flat_id: flatId || null,
+          flat_id: resolvedFlatId,
           role: 'resident',
           status: 'pending',
         });
 
       if (insertError) {
-        return { success: false, error: insertError.message };
+        // Handle concurrent duplicate submission gracefully
+        if (
+          insertError.code === '23505' ||
+          insertError.message.includes('uq_society_membership') ||
+          insertError.message.includes('duplicate key')
+        ) {
+          await fetchUserData(user.id);
+          return {
+            success: false,
+            code: 'DUPLICATE_MEMBERSHIP' as const,
+            error: 'You have already submitted an application for this society.',
+          };
+        }
+
+        // Safe developer diagnostic (no secret exposure)
+        console.error('Membership insert failed safely:', insertError.code, insertError.message);
+        return {
+          success: false,
+          code: 'SERVER_ERROR' as const,
+          error: 'We could not submit your application. Please check your details and try again.',
+        };
       }
 
       await fetchUserData(user.id);
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to request membership' };
+      console.error('Membership request exception:', err);
+      return {
+        success: false,
+        code: 'SERVER_ERROR' as const,
+        error: 'An unexpected error occurred while submitting your application. Please try again.',
+      };
     }
   };
 
