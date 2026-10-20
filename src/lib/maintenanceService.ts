@@ -17,7 +17,7 @@ export interface EligibleStaff {
   userId: string;
   fullName: string;
   email: string;
-  role: 'maintenance_staff' | 'supervisor';
+  role: 'maintenance_staff' | 'supervisor' | 'society_admin';
   designation: string;
 }
 
@@ -53,7 +53,7 @@ export async function fetchEligibleSocietyStaff(societyId: string): Promise<Elig
     `)
     .eq('society_id', societyId)
     .eq('status', 'active')
-    .in('role', ['maintenance_staff', 'supervisor']);
+    .in('role', ['maintenance_staff', 'supervisor', 'society_admin']);
 
   if (error) {
     throw new Error(`Failed to load eligible staff: ${error.message}`);
@@ -64,8 +64,14 @@ export async function fetchEligibleSocietyStaff(societyId: string): Promise<Elig
     userId: row.user_id,
     fullName: row.profiles?.full_name || 'Staff Member',
     email: row.profiles?.email || '',
-    role: row.role as 'maintenance_staff' | 'supervisor',
-    designation: row.staff_designation || (row.role === 'supervisor' ? 'Supervisor' : 'Technician'),
+    role: row.role as 'maintenance_staff' | 'supervisor' | 'society_admin',
+    designation:
+      row.staff_designation ||
+      (row.role === 'society_admin'
+        ? 'Society Administrator (Lead Operations)'
+        : row.role === 'supervisor'
+        ? 'Supervisor'
+        : 'Technician'),
   }));
 }
 
@@ -95,7 +101,7 @@ export async function assignComplaintToStaff(params: {
     .eq('society_id', params.societyId)
     .eq('user_id', params.staffUserId)
     .eq('status', 'active')
-    .in('role', ['maintenance_staff', 'supervisor'])
+    .in('role', ['maintenance_staff', 'supervisor', 'society_admin'])
     .maybeSingle();
 
   if (staffErr || !staffMembership) {

@@ -59,7 +59,7 @@ const ADMIN_NAV = [
 ];
 
 export const AdminDashboard: React.FC = () => {
-  const { user, currentSociety, approveMembership, rejectMembership, enrollStaffMember } = useAuth();
+  const { user, currentSociety, societies, selectSociety, approveMembership, rejectMembership, enrollStaffMember } = useAuth();
   const [activeSection, setActiveSection] = useState<
     | 'overview'
     | 'memberships'
@@ -537,9 +537,27 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-navy">Society Governance & Operations</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Society: <strong className="text-navy">{currentSociety?.name || 'Loading...'}</strong>
-            </p>
+            <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
+              <span>Active Society:</span>
+              {societies.length > 1 ? (
+                <div className="inline-flex items-center gap-1.5 bg-soft rounded-lg border border-teal/40 px-2.5 py-1 shadow-sm">
+                  <Icon n="shield" s={14} c="text-teal" />
+                  <select
+                    value={currentSociety?.id || ''}
+                    onChange={(e) => selectSociety(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-navy focus:outline-none cursor-pointer"
+                  >
+                    {societies.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <strong className="text-navy">{currentSociety?.name || 'Loading...'}</strong>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button

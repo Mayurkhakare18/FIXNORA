@@ -27,7 +27,7 @@ const CITIZEN_NAV = [
 ];
 
 export const NewComplaintPage: React.FC = () => {
-  const { user, currentSociety, currentMembership } = useAuth();
+  const { user, currentSociety, currentMembership, societies, selectSociety } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState<ComplaintFormData>({
@@ -222,9 +222,27 @@ export const NewComplaintPage: React.FC = () => {
       <div className="max-w-3xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-navy">Submit a Complaint</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Log an issue for your society. All submissions generate an official tracking ID.
-          </p>
+          <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
+            <span>Reporting for Society:</span>
+            {societies.length > 1 ? (
+              <div className="inline-flex items-center gap-1.5 bg-soft rounded-lg border border-teal/40 px-2.5 py-1 shadow-sm">
+                <Icon n="shield" s={14} c="text-teal" />
+                <select
+                  value={currentSociety?.id || ''}
+                  onChange={(e) => selectSociety(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-navy focus:outline-none cursor-pointer"
+                >
+                  {societies.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <strong className="text-navy">{currentSociety?.name || 'Loading...'}</strong>
+            )}
+          </div>
         </div>
 
         {/* Environment / Configuration check */}
