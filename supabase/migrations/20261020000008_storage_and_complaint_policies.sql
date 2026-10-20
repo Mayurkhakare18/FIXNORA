@@ -39,8 +39,6 @@ BEGIN
         SELECT 1 FROM information_schema.tables 
         WHERE table_schema = 'storage' AND table_name = 'objects'
     ) THEN
-        ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
         -- Drop existing policies if re-running
         DROP POLICY IF EXISTS "evidence_select_authorized_society_members" ON storage.objects;
         DROP POLICY IF EXISTS "evidence_insert_active_society_members" ON storage.objects;
