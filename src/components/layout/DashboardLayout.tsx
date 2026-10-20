@@ -62,9 +62,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
 
           {/* Active Society Context & Switcher */}
-          {societies.length > 1 && (
-            <div className="hidden md:flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground font-medium">Society:</span>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground font-medium hidden sm:inline">Society:</span>
+            {societies.length > 1 ? (
               <select
                 value={currentSociety?.id || ''}
                 onChange={(e) => selectSociety(e.target.value)}
@@ -76,8 +76,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+            ) : currentSociety ? (
+              <span className="rounded-lg border border-bd bg-soft px-2.5 py-1 text-xs font-semibold text-navy">
+                {currentSociety.name}
+              </span>
+            ) : null}
+          </div>
 
           {/* Right Controls */}
           <div className="flex items-center gap-3">

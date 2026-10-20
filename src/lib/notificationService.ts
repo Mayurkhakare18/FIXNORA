@@ -99,18 +99,20 @@ export async function createNotification(
     delivered_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('notifications')
-    .insert([payload])
-    .select('*')
-    .single();
+    .insert([payload]);
 
   if (error) {
     console.warn('Failed to dispatch notification:', error.message);
     return null;
   }
 
-  return data as NotificationItem;
+  return {
+    id: 'persisted',
+    ...payload,
+    created_at: payload.delivered_at,
+  } as NotificationItem;
 }
 
 /**

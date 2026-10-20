@@ -139,6 +139,7 @@ export const AdminDashboard: React.FC = () => {
         .from('complaints')
         .select(`
           *,
+          citizen:profiles!complaints_citizen_id_fkey(full_name, phone_number),
           category:complaint_categories!fk_complaints_category_society(id, name),
           building:buildings!fk_complaints_building_society(id, name),
           flat:flats(id, flat_number)
@@ -695,7 +696,7 @@ export const AdminDashboard: React.FC = () => {
                           </span>
                         </div>
                         <h3 className="text-sm font-bold text-navy">{c.title}</h3>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>{c.category?.name || 'Category'}</span>
                           {c.building?.name && (
                             <>
@@ -706,6 +707,10 @@ export const AdminDashboard: React.FC = () => {
                               </span>
                             </>
                           )}
+                          <span>•</span>
+                          <span>
+                            {c.is_anonymous ? 'Anonymous Resident' : (c.citizen?.full_name || 'Resident')}
+                          </span>
                           <span>•</span>
                           <span>{new Date(c.submitted_at).toLocaleDateString()}</span>
                         </div>
