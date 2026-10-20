@@ -305,7 +305,7 @@ export async function fetchSocietyPendingVerifications(
 
   const { data, error } = await supabase
     .from('complaints')
-    .select('*, citizen:profiles!complaints_citizen_id_fkey(full_name, phone_number), category:complaint_categories!fk_complaints_category_society(id, name)')
+    .select('*, citizen:profiles!complaints_citizen_id_fkey(full_name, phone), category:complaint_categories!fk_complaints_category_society(id, name)')
     .eq('society_id', societyId)
     .eq('status', 'resolved')
     .order('resolved_at', { ascending: false });

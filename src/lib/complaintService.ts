@@ -45,7 +45,7 @@ export interface ComplaintSubmissionInput {
 }
 
 export interface ComplaintWithRelations extends Complaint {
-  citizen?: { full_name: string; phone_number?: string } | null;
+  citizen?: { full_name: string; phone?: string; phone_number?: string } | null;
   category?: { id: string; name: string } | null;
   department?: { id: string; name: string } | null;
   building?: { id: string; name: string } | null;

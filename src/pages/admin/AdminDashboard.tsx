@@ -139,7 +139,7 @@ export const AdminDashboard: React.FC = () => {
         .from('complaints')
         .select(`
           *,
-          citizen:profiles!complaints_citizen_id_fkey(full_name, phone_number),
+          citizen:profiles!complaints_citizen_id_fkey(full_name, phone),
           category:complaint_categories!fk_complaints_category_society(id, name),
           building:buildings!fk_complaints_building_society(id, name),
           flat:flats(id, flat_number)
@@ -541,7 +541,23 @@ export const AdminDashboard: React.FC = () => {
               Society: <strong className="text-navy">{currentSociety?.name || 'Loading...'}</strong>
             </p>
           </div>
-          <Pill tone="t">Society Administrator</Pill>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                loadComplaints();
+                if (activeSection === 'memberships') loadMemberships();
+                if (activeSection === 'expenses') loadExpenses();
+                if (activeSection === 'escalations') loadEscalations();
+              }}
+              disabled={isLoadingComplaints}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-bd bg-white px-3 py-1.5 text-xs font-semibold text-navy hover:bg-soft transition shadow-sm disabled:opacity-50"
+            >
+              <Icon n="refresh-cw" s={14} c={isLoadingComplaints ? 'animate-spin' : ''} />
+              <span>{isLoadingComplaints ? 'Refreshing...' : 'Refresh Data'}</span>
+            </button>
+            <Pill tone="t">Society Administrator</Pill>
+          </div>
         </div>
 
         {/* Global Action Banner */}
@@ -1224,7 +1240,7 @@ export const AdminDashboard: React.FC = () => {
                           <span className="font-bold text-navy">{pv.title}</span>
                         </div>
                         <div className="text-[11px] text-muted-foreground mt-0.5">
-                          Resident: {pv.citizen?.full_name || 'Resident'} ({pv.citizen?.phone_number || 'N/A'}) • Category: {pv.category?.name || 'General'}
+                          Resident: {pv.citizen?.full_name || 'Resident'} ({pv.citizen?.phone || (pv.citizen as any)?.phone_number || 'N/A'}) • Category: {pv.category?.name || 'General'}
                         </div>
                         {pv.resolution_remarks && (
                           <p className="text-muted-foreground italic mt-1 bg-soft/50 p-2 rounded">
