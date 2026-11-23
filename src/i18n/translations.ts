@@ -6,6 +6,7 @@ export interface TranslationDictionary {
   nw: string;
   nr: string;
   na: string;
+  np: string;
   lg: string;
   gs: string;
   lbl: string;
@@ -33,6 +34,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     nw: "How It Works",
     nr: "For Residents",
     na: "For Administrators",
+    np: "Plans & Pricing",
     lg: "Login",
     gs: "Get Started",
     lbl: "SMART COMPLAINT MANAGEMENT",
@@ -58,6 +60,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     nw: "कैसे काम करता है",
     nr: "निवासियों के लिए",
     na: "प्रशासकों के लिए",
+    np: "योजनाएं और मूल्य",
     lg: "लॉगिन",
     gs: "शुरू करें",
     lbl: "स्मार्ट शिकायत प्रबंधन",
@@ -83,6 +86,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     nw: "हे कसे कार्य करते",
     nr: "रहिवाशांसाठी",
     na: "प्रशासकांसाठी",
+    np: "प्लॅन आणि किंमत",
     lg: "लॉगिन",
     gs: "सुरुवात करा",
     lbl: "स्मार्ट तक्रार व्यवस्थापन",

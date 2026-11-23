@@ -6,6 +6,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Card, Pill, Btn } from '../../components/ui/Primitives';
 import { Icon } from '../../components/ui/Icon';
@@ -41,9 +42,13 @@ import { PollsSection } from './sections/PollsSection';
 import { EmergencyContactsSection } from './sections/EmergencyContactsSection';
 import { PreventiveMaintenanceSection } from './sections/PreventiveMaintenanceSection';
 import { OperationalReportsSection } from './sections/OperationalReportsSection';
+import { BillingSection } from './sections/BillingSection';
+import { RevenueAnalyticsSection } from './sections/RevenueAnalyticsSection';
 
 const ADMIN_NAV = [
   { label: "Overview", href: "/dashboard/admin", icon: "chart" as const },
+  { label: "Billing & Plans", href: "/admin/billing", icon: "file" as const },
+  { label: "Revenue Analytics", href: "/admin/revenue", icon: "chart" as const },
   { label: "Memberships & Staff", href: "/dashboard/admin", icon: "user-check" as const },
   { label: "Society Expenses", href: "/dashboard/admin", icon: "file" as const },
   { label: "SLA Escalations", href: "/dashboard/admin", icon: "alert" as const },
@@ -60,8 +65,11 @@ const ADMIN_NAV = [
 
 export const AdminDashboard: React.FC = () => {
   const { user, currentSociety, societies, selectSociety, approveMembership, rejectMembership, enrollStaffMember } = useAuth();
+  const location = useLocation();
   const [activeSection, setActiveSection] = useState<
     | 'overview'
+    | 'billing'
+    | 'revenue'
     | 'memberships'
     | 'expenses'
     | 'escalations'
@@ -74,6 +82,20 @@ export const AdminDashboard: React.FC = () => {
     | 'categories'
     | 'audit'
   >('overview');
+
+  useEffect(() => {
+    if (location.pathname === '/admin/billing') {
+      setActiveSection('billing');
+    } else if (location.pathname === '/admin/revenue') {
+      setActiveSection('revenue');
+    } else if (location.pathname === '/admin/departments') {
+      setActiveSection('departments');
+    } else if (location.pathname === '/admin/categories') {
+      setActiveSection('categories');
+    } else if (location.pathname === '/admin/audit-logs') {
+      setActiveSection('audit');
+    }
+  }, [location.pathname]);
 
   // Action / toast message
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -600,6 +622,8 @@ export const AdminDashboard: React.FC = () => {
           {(
             [
               ['overview', 'Complaints Overview'],
+              ['billing', 'Billing & Plans'],
+              ['revenue', 'Revenue Analytics'],
               ['memberships', 'Memberships & Staff'],
               ['expenses', 'Society Expenses'],
               ['escalations', 'SLA Escalations'],
@@ -1444,6 +1468,16 @@ export const AdminDashboard: React.FC = () => {
           <OperationalReportsSection
             societyId={currentSociety.id}
           />
+        )}
+
+        {/* 13. BILLING & SUBSCRIPTIONS SECTION */}
+        {activeSection === 'billing' && currentSociety && (
+          <BillingSection society={currentSociety} />
+        )}
+
+        {/* 14. REVENUE ANALYTICS SECTION */}
+        {activeSection === 'revenue' && (
+          <RevenueAnalyticsSection />
         )}
 
         {/* MODAL: Record Society Expense */}

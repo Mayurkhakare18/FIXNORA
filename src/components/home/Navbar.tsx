@@ -18,6 +18,7 @@ export const Navbar: React.FC = () => {
     ["#how", "nw"],
     ["#residents", "nr"],
     ["#admins", "na"],
+    ["#pricing", "np"],
   ];
 
   const handleNavClick = (href: string) => {

@@ -121,6 +121,22 @@ export const App: React.FC = () => {
           }
         />
         <Route
+          path="/admin/billing"
+          element={
+            <ProtectedRoute allowedRoles={['society_admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/revenue"
+          element={
+            <ProtectedRoute allowedRoles={['society_admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/departments"
           element={
             <ProtectedRoute allowedRoles={['society_admin']}>

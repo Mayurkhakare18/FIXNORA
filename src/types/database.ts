@@ -393,3 +393,119 @@ export interface AuditLog {
   user_agent?: string | null;
   created_at: string;
 }
+
+// ==============================================================================
+// Subscription Management & Billing Definitions
+// Core revenue models: Hostel Plan (₹800/mo) and Society Plan (₹2,000/mo)
+// Automated recurring payments, GST compliance (SAC 998314), & Revenue Analytics
+// ==============================================================================
+
+export type SubscriptionPlanType = 'hostel' | 'society';
+export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'paused';
+export type BillingInterval = 'monthly' | 'yearly';
+export type PaymentStatus = 'paid' | 'failed' | 'pending' | 'refunded';
+export type PaymentMethodType = 'upi_autopay' | 'card' | 'netbanking';
+
+export interface PlanFeature {
+  name: string;
+  includedInHostel: boolean;
+  includedInSociety: boolean;
+  note?: string;
+}
+
+export interface SubscriptionPlanMeta {
+  type: SubscriptionPlanType;
+  name: string;
+  subtitle: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  recommendedRole: string;
+  maxResidents?: number;
+  badge?: string;
+  features: string[];
+}
+
+export interface Subscription {
+  id: string;
+  society_id: string;
+  plan_type: SubscriptionPlanType;
+  plan_name: string;
+  billing_interval: BillingInterval;
+  amount: number;
+  currency: string;
+  status: SubscriptionStatus;
+  current_period_start: string;
+  current_period_end: string;
+  next_billing_at: string;
+  cancel_at_period_end: boolean;
+  auto_renewal: boolean;
+  payment_method_type: PaymentMethodType;
+  payment_method_last4?: string;
+  payment_method_brand?: string;
+  upi_id?: string;
+  mandate_id?: string;
+  grace_period_until?: string | null;
+  failed_attempts: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionInvoice {
+  id: string;
+  society_id: string;
+  subscription_id: string;
+  invoice_number: string;
+  plan_type: SubscriptionPlanType;
+  plan_name: string;
+  base_amount: number;
+  tax_amount: number; // 18% GST Total
+  cgst: number;       // 9% CGST
+  sgst: number;       // 9% SGST
+  igst: number;       // 0% or 18%
+  total_amount: number;
+  sac_code: string;   // 998314 IT Software SaaS Services
+  currency: string;
+  status: PaymentStatus;
+  payment_method: string;
+  gateway_payment_id?: string;
+  failure_reason?: string | null;
+  retry_count: number;
+  billing_period_start: string;
+  billing_period_end: string;
+  paid_at?: string | null;
+  created_at: string;
+}
+
+export interface RenewalReminder {
+  id: string;
+  society_id: string;
+  subscription_id?: string;
+  days_before: number;
+  due_date: string;
+  amount: number;
+  status: 'sent' | 'pending';
+  channel: 'in_app' | 'email' | 'whatsapp';
+  sent_at?: string;
+}
+
+export interface RevenueAnalytics {
+  mrr: number;
+  arr: number;
+  total_revenue: number;
+  active_subscriptions: number;
+  active_hostels: number;
+  active_societies: number;
+  success_rate: number;
+  churn_rate: number;
+  plan_distribution: {
+    hostel: number;
+    society: number;
+  };
+  monthly_trend: {
+    month: string;
+    hostel_revenue: number;
+    society_revenue: number;
+    total: number;
+  }[];
+}
+

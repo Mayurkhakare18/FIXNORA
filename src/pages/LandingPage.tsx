@@ -7,6 +7,7 @@ import { Features } from '../components/home/Features';
 import { HowItWorks } from '../components/home/HowItWorks';
 import { TrackingShowcase } from '../components/home/TrackingShowcase';
 import { Roles } from '../components/home/Roles';
+import { Pricing } from '../components/home/Pricing';
 import { AnalyticsPreview } from '../components/home/AnalyticsPreview';
 import { CtaBanner } from '../components/home/CtaBanner';
 
@@ -22,6 +23,7 @@ export const LandingPage: React.FC = () => {
       <HowItWorks />
       <TrackingShowcase />
       <Roles />
+      <Pricing />
       <AnalyticsPreview />
       <CtaBanner
         badge={{ label: "SmartResolve" }}
