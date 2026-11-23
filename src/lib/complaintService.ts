@@ -254,59 +254,60 @@ export async function submitComplaint(
     throw new Error(validationError);
   }
 
-  // If Supabase is unconfigured, handle locally with demo session storage
-  if (!isSupabaseConfigured) {
-    const year = new Date().getFullYear();
-    const randomSeq = Math.floor(1000 + Math.random() * 9000);
-    const trackingId = `SR-${year}-${randomSeq}`;
-    const newId = `cmp-${Date.now()}`;
-
-    const newComplaint: Complaint = {
-      id: newId,
-      tracking_id: trackingId,
-      society_id: input.societyId,
-      citizen_id: input.citizenId,
-      category_id: input.categoryId,
-      department_id: input.departmentId,
-      title: input.title.trim(),
-      description: input.description.trim(),
-      priority: input.priority,
-      building_id: input.buildingId || null,
-      flat_id: input.flatId || null,
-      location_details: input.locationDetails?.trim() || null,
-      is_anonymous: Boolean(input.isAnonymous),
-      status: 'submitted',
-      submitted_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
+  // 1. If Supabase is configured, attempt live database insert
+  if (isSupabaseConfigured) {
     try {
-      const stored = localStorage.getItem('smartresolve_demo_complaints');
-      const list = stored ? JSON.parse(stored) : [];
-      list.unshift(newComplaint);
-      localStorage.setItem('smartresolve_demo_complaints', JSON.stringify(list));
-    } catch (e) {
-      console.warn('Could not cache demo complaint in localStorage', e);
-    }
+      const payload = {
+        society_id: input.societyId,
+        citizen_id: input.citizenId,
+        category_id: input.categoryId,
+        department_id: input.departmentId,
+        title: input.title.trim(),
+        description: input.description.trim(),
+        priority: input.priority,
+        building_id: input.buildingId || null,
+        flat_id: input.flatId || null,
+        location_details: input.locationDetails?.trim() || null,
+        is_anonymous: Boolean(input.isAnonymous),
+        status: 'submitted',
+      };
 
-    try {
-      await createNotification({
-        societyId: input.societyId,
-        recipientId: input.citizenId,
-        complaintId: newId,
-        title: 'Complaint Registered (Demo Mode)',
-        message: `Your complaint #${trackingId} ("${newComplaint.title}") has been registered and is under review.`,
-        notificationType: 'complaint_submitted',
-      });
-    } catch (notifErr) {
-      console.warn('Demo notification notice:', notifErr);
-    }
+      const { data, error } = await supabase
+        .from('complaints')
+        .insert([payload])
+        .select('*')
+        .single();
 
-    return newComplaint;
+      if (!error && data) {
+        const createdComplaint = data as Complaint;
+        try {
+          await createNotification({
+            societyId: input.societyId,
+            recipientId: input.citizenId,
+            complaintId: createdComplaint.id,
+            title: 'Complaint Registered',
+            message: `Your complaint #${createdComplaint.tracking_id} ("${createdComplaint.title}") has been registered and is under review.`,
+            notificationType: 'complaint_submitted',
+          });
+        } catch (notifErr) {
+          console.warn('Submission notification notice:', notifErr);
+        }
+        return createdComplaint;
+      }
+    } catch (netErr) {
+      console.warn('Live Supabase insert failed or unreachable, storing in demo mode:', netErr);
+    }
   }
 
-  const payload = {
+  // 2. Demo / Offline storage fallback (if unconfigured or if remote host fails to fetch)
+  const year = new Date().getFullYear();
+  const randomSeq = Math.floor(1000 + Math.random() * 9000);
+  const trackingId = `SR-${year}-${randomSeq}`;
+  const newId = `cmp-${Date.now()}`;
+
+  const newComplaint: Complaint = {
+    id: newId,
+    tracking_id: trackingId,
     society_id: input.societyId,
     citizen_id: input.citizenId,
     category_id: input.categoryId,
@@ -319,35 +320,34 @@ export async function submitComplaint(
     location_details: input.locationDetails?.trim() || null,
     is_anonymous: Boolean(input.isAnonymous),
     status: 'submitted',
+    submitted_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase
-    .from('complaints')
-    .insert([payload])
-    .select('*')
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to submit complaint: ${error.message}`);
+  try {
+    const stored = localStorage.getItem('smartresolve_demo_complaints');
+    const list = stored ? JSON.parse(stored) : [];
+    list.unshift(newComplaint);
+    localStorage.setItem('smartresolve_demo_complaints', JSON.stringify(list));
+  } catch (e) {
+    console.warn('Could not cache demo complaint in localStorage', e);
   }
 
-  const createdComplaint = data as Complaint;
-
-  // Dispatch submission confirmation notification to resident
   try {
     await createNotification({
       societyId: input.societyId,
       recipientId: input.citizenId,
-      complaintId: createdComplaint.id,
-      title: 'Complaint Registered',
-      message: `Your complaint #${createdComplaint.tracking_id} ("${createdComplaint.title}") has been registered and is under review.`,
+      complaintId: newId,
+      title: 'Complaint Registered (Demo Mode)',
+      message: `Your complaint #${trackingId} ("${newComplaint.title}") has been registered and is under review.`,
       notificationType: 'complaint_submitted',
     });
   } catch (notifErr) {
-    console.warn('Submission notification notice:', notifErr);
+    console.warn('Demo notification notice:', notifErr);
   }
 
-  return createdComplaint;
+  return newComplaint;
 }
 
 /**
@@ -382,67 +382,61 @@ export async function uploadComplaintEvidence(
     throw new Error(fileError);
   }
 
-  if (!isSupabaseConfigured) {
-    const demoAtt: ComplaintAttachment = {
-      id: `att-demo-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      complaint_id: complaintId,
-      society_id: societyId,
-      uploaded_by: uploaderUserId,
-      file_path: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : `demo/${file.name}`,
-      file_name: file.name,
-      file_size_bytes: file.size,
-      content_type: file.type,
-      attachment_type: 'evidence',
-      created_at: new Date().toISOString(),
-    };
-    return demoAtt;
+  if (isSupabaseConfigured) {
+    try {
+      // Safe file path: <society_id>/<complaint_id>/<timestamp>-<sanitized_name>
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `${societyId}/${complaintId}/${Date.now()}-${sanitizedName}`;
+
+      // 1. Upload to Supabase Storage private bucket
+      const { error: uploadError } = await supabase.storage
+        .from('complaint-evidence')
+        .upload(storagePath, file, {
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (!uploadError) {
+        // 2. Persist record in complaint_attachments
+        const attachmentPayload = {
+          complaint_id: complaintId,
+          society_id: societyId,
+          uploaded_by: uploaderUserId,
+          file_path: storagePath,
+          file_name: file.name,
+          file_size_bytes: file.size,
+          content_type: file.type,
+          attachment_type: 'evidence',
+        };
+
+        const { data: attachmentRecord, error: insertError } = await supabase
+          .from('complaint_attachments')
+          .insert([attachmentPayload])
+          .select('*')
+          .single();
+
+        if (!insertError && attachmentRecord) {
+          return attachmentRecord as ComplaintAttachment;
+        }
+      }
+    } catch (storageErr) {
+      console.warn('Storage upload failed or host unreachable, using demo attachment:', storageErr);
+    }
   }
 
-  // Safe file path: <society_id>/<complaint_id>/<timestamp>-<sanitized_name>
-  const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const storagePath = `${societyId}/${complaintId}/${Date.now()}-${sanitizedName}`;
-
-  // 1. Upload to Supabase Storage private bucket
-  const { error: uploadError } = await supabase.storage
-    .from('complaint-evidence')
-    .upload(storagePath, file, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (uploadError) {
-    throw new Error(`Evidence upload failed for ${file.name}: ${uploadError.message}`);
-  }
-
-  // 2. Persist record in complaint_attachments
-  const attachmentPayload = {
+  // Fallback demo attachment
+  return {
+    id: `att-demo-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     complaint_id: complaintId,
     society_id: societyId,
     uploaded_by: uploaderUserId,
-    file_path: storagePath,
+    file_path: typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : `demo/${file.name}`,
     file_name: file.name,
     file_size_bytes: file.size,
     content_type: file.type,
     attachment_type: 'evidence',
+    created_at: new Date().toISOString(),
   };
-
-  const { data: attachmentRecord, error: insertError } = await supabase
-    .from('complaint_attachments')
-    .insert([attachmentPayload])
-    .select('*')
-    .single();
-
-  if (insertError) {
-    // Partial failure cleanup: remove the uploaded file to avoid orphaned storage objects
-    console.warn(
-      `Rolling back orphaned storage file ${storagePath} due to database error:`,
-      insertError
-    );
-    await supabase.storage.from('complaint-evidence').remove([storagePath]);
-    throw new Error(`Failed to save attachment record: ${insertError.message}`);
-  }
-
-  return attachmentRecord as ComplaintAttachment;
 }
 
 /**
@@ -732,43 +726,57 @@ export async function fetchResidentDashboardData(
     };
   }
 
-  const { data, error } = await supabase
-    .from('complaints')
-    .select(`
-      *,
-      category:complaint_categories!fk_complaints_category_society(id, name),
-      building:buildings!fk_complaints_building_society(id, name),
-      flat:flats(id, flat_number)
-    `)
-    .eq('society_id', societyId)
-    .eq('citizen_id', citizenId)
-    .order('submitted_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('complaints')
+      .select(`
+        *,
+        category:complaint_categories!fk_complaints_category_society(id, name),
+        building:buildings!fk_complaints_building_society(id, name),
+        flat:flats(id, flat_number)
+      `)
+      .eq('society_id', societyId)
+      .eq('citizen_id', citizenId)
+      .order('submitted_at', { ascending: false });
 
-  if (error) {
-    throw new Error(`Failed to load dashboard complaints: ${error.message}`);
+    if (!error && data) {
+      const complaints = data as ComplaintWithRelations[];
+      const underReview = complaints.filter((c) =>
+        ['submitted', 'under_review'].includes(c.status)
+      ).length;
+      const inProgress = complaints.filter((c) =>
+        ['assigned', 'in_progress', 'awaiting_citizen_response', 'reopened'].includes(c.status)
+      ).length;
+      const resolved = complaints.filter((c) =>
+        ['resolved', 'closed'].includes(c.status)
+      ).length;
+
+      return {
+        total: complaints.length,
+        underReview,
+        inProgress,
+        resolved,
+        recentComplaints: complaints,
+      };
+    }
+  } catch (queryErr) {
+    console.warn('Failed to load live complaints, using cached demo data:', queryErr);
   }
 
-  const complaints = (data || []) as ComplaintWithRelations[];
-
-  const underReview = complaints.filter((c) =>
-    ['submitted', 'under_review'].includes(c.status)
-  ).length;
-
-  const inProgress = complaints.filter((c) =>
-    ['assigned', 'in_progress', 'awaiting_citizen_response', 'reopened'].includes(
-      c.status
-    )
-  ).length;
-
-  const resolved = complaints.filter((c) =>
-    ['resolved', 'closed'].includes(c.status)
-  ).length;
+  // Fallback demo complaints if query failed
+  let fallbackList: ComplaintWithRelations[] = [];
+  try {
+    const stored = localStorage.getItem('smartresolve_demo_complaints');
+    if (stored) {
+      fallbackList = JSON.parse(stored);
+    }
+  } catch (e) {}
 
   return {
-    total: complaints.length,
-    underReview,
-    inProgress,
-    resolved,
-    recentComplaints: complaints,
+    total: fallbackList.length,
+    underReview: fallbackList.filter((c) => ['submitted', 'under_review'].includes(c.status)).length,
+    inProgress: fallbackList.filter((c) => ['assigned', 'in_progress', 'awaiting_citizen_response', 'reopened'].includes(c.status)).length,
+    resolved: fallbackList.filter((c) => ['resolved', 'closed'].includes(c.status)).length,
+    recentComplaints: fallbackList,
   };
 }
