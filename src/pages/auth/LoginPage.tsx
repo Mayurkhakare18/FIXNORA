@@ -18,6 +18,12 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const handleQuickFill = (demoEmail: string, demoPass: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    setLocalError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
@@ -97,6 +103,55 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
         )}
+
+        {/* Quick Demo Access Credentials Card */}
+        <div className="mb-4 rounded-xl border border-teal/30 bg-teal/5 p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-navy flex items-center gap-1.5">
+              <Icon n="shield" s={14} c="text-teal" />
+              Quick Demo Credentials
+            </span>
+            <span className="text-[10px] font-semibold text-teal bg-teal/10 px-2 py-0.5 rounded">
+              Click to Auto-Fill
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => handleQuickFill('admin_society_a@smartresolve.local', 'AdminPassword@123')}
+              className="p-2.5 rounded-lg border border-teal/20 bg-card hover:bg-white text-left transition shadow-xs group"
+            >
+              <div className="font-bold text-navy text-[11px] group-hover:text-teal flex items-center justify-between">
+                <span>Society Admin</span>
+                <span className="text-[9px] bg-teal text-white px-1 py-0.2 rounded font-semibold">Admin</span>
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                admin_society_a@smartresolve.local
+              </div>
+              <div className="text-[10px] text-muted-foreground font-mono">
+                Pass: AdminPassword@123
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleQuickFill('resident_society_b@smartresolve.local', 'ResidentPassword@123')}
+              className="p-2.5 rounded-lg border border-teal/20 bg-card hover:bg-white text-left transition shadow-xs group"
+            >
+              <div className="font-bold text-navy text-[11px] group-hover:text-teal flex items-center justify-between">
+                <span>Resident</span>
+                <span className="text-[9px] bg-slate-600 text-white px-1 py-0.2 rounded font-semibold">Resident</span>
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                resident_society_b@smartresolve.local
+              </div>
+              <div className="text-[10px] text-muted-foreground font-mono">
+                Pass: ResidentPassword@123
+              </div>
+            </button>
+          </div>
+        </div>
 
         {/* Login Form Card */}
         <Card className="p-6 shadow-lg">

@@ -46,8 +46,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // 2. Unconfigured Supabase Warning Banner for local dev without .env
-  if (!isConfigured) {
+  // 2. Unconfigured Supabase Warning Banner for local dev without .env (only if unauthenticated)
+  if (!isConfigured && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <Card className="max-w-md w-full p-6 text-center space-y-4 shadow-xl border-amber-300">

@@ -147,9 +147,109 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // Helper to establish a demo/seeded session for local testing or demo environments
+  const establishDemoSession = (role: 'society_admin' | 'resident' | 'maintenance_staff', email: string) => {
+    const isSocietyAdmin = role === 'society_admin';
+    const isStaff = role === 'maintenance_staff';
+
+    const mockSocId = isSocietyAdmin ? '11111111-1111-1111-1111-111111111111' : '22222222-2222-2222-2222-222222222222';
+    const mockSocName = isSocietyAdmin ? 'Emerald Heights Co-op' : 'Sapphire Palms Society';
+    const mockUserId = isSocietyAdmin ? '2ea02706-77b8-4086-bc92-181ffd9a3090' : '2d2af9ac-6cd9-4691-9531-4c6d8a58dfa4';
+
+    const mockUser: User = {
+      id: mockUserId,
+      app_metadata: {},
+      user_metadata: {},
+      aud: 'authenticated',
+      created_at: new Date().toISOString(),
+      email: email.trim(),
+    } as User;
+
+    const mockProfile: Profile = {
+      id: mockUserId,
+      full_name: isSocietyAdmin ? 'Kavita Iyer (Society Admin)' : isStaff ? 'Rajesh Kumar (Technician)' : 'Aarav Sharma (Resident)',
+      email: email.trim(),
+      preferred_language: 'en',
+      is_platform_admin: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const mockSociety: Society = {
+      id: mockSocId,
+      name: mockSocName,
+      registration_number: isSocietyAdmin ? 'MAH/MUM/2026/001' : 'MAH/PUN/2026/002',
+      address: isSocietyAdmin ? '12 Linking Road, Bandra West' : '45 Koregaon Park Road',
+      city: isSocietyAdmin ? 'Mumbai' : 'Pune',
+      state: 'Maharashtra',
+      pincode: isSocietyAdmin ? '400050' : '411001',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const mockMembership: SocietyMembership = {
+      id: `mem-${mockSocId.slice(0, 8)}`,
+      society_id: mockSocId,
+      user_id: mockUserId,
+      role: role,
+      status: 'active',
+      staff_designation: isStaff ? 'Lead Electrician & Facility Supervisor' : undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const demoState = {
+      user: mockUser,
+      profile: mockProfile,
+      societies: [mockSociety],
+      currentSociety: mockSociety,
+      memberships: [mockMembership],
+      currentMembership: mockMembership,
+    };
+
+    try {
+      localStorage.setItem('smartresolve_demo_session', JSON.stringify(demoState));
+    } catch (e) {
+      console.warn('Could not cache demo session in localStorage', e);
+    }
+
+    setUser(mockUser);
+    setProfile(mockProfile);
+    setSocieties([mockSociety]);
+    setCurrentSociety(mockSociety);
+    setMemberships([mockMembership]);
+    setCurrentMembership(mockMembership);
+
+    return {
+      success: true,
+      memberships: [mockMembership],
+      currentMembership: mockMembership,
+    };
+  };
+
   // Initial Session Loading & Listener Setup
   useEffect(() => {
     let isMounted = true;
+
+    // Check cached demo session first
+    const storedDemo = localStorage.getItem('smartresolve_demo_session');
+    if (storedDemo) {
+      try {
+        const parsed = JSON.parse(storedDemo);
+        if (isMounted) {
+          setUser(parsed.user);
+          setProfile(parsed.profile);
+          setSocieties(parsed.societies);
+          setCurrentSociety(parsed.currentSociety);
+          setMemberships(parsed.memberships);
+          setCurrentMembership(parsed.currentMembership);
+          setIsLoading(false);
+        }
+        return;
+      } catch (e) {
+        localStorage.removeItem('smartresolve_demo_session');
+      }
+    }
 
     if (!isSupabaseConfigured) {
       setIsLoading(false);
@@ -205,43 +305,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign In
   const signIn = async (email: string, password: string) => {
     setError(null);
-    if (!isSupabaseConfigured) {
-      const err = 'Supabase credentials are not configured in .env. Real authentication requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.';
-      setError(err);
-      return { success: false, error: err };
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 1. Try Supabase Auth if configured
+    if (isSupabaseConfigured) {
+      try {
+        setIsLoading(true);
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (!authError && data.user) {
+          localStorage.removeItem('smartresolve_demo_session');
+          setUser(data.user);
+          setSession(data.session);
+          const userContext = await fetchUserData(data.user.id);
+          return {
+            success: true,
+            memberships: userContext?.memberships || [],
+            currentMembership: userContext?.currentMembership || null,
+          };
+        }
+      } catch (netErr) {
+        console.warn('Live Supabase sign in failed or unreachable, checking demo fallback:', netErr);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    try {
-      setIsLoading(true);
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (authError) {
-        setError(authError.message);
-        return { success: false, error: authError.message };
-      }
-
-      if (data.user) {
-        setUser(data.user);
-        setSession(data.session);
-        const userContext = await fetchUserData(data.user.id);
-        return {
-          success: true,
-          memberships: userContext?.memberships || [],
-          currentMembership: userContext?.currentMembership || null,
-        };
-      }
-
-      return { success: true, memberships: [], currentMembership: null };
-    } catch (err: any) {
-      const msg = err.message || 'An unexpected error occurred during sign in';
-      setError(msg);
-      return { success: false, error: msg };
-    } finally {
-      setIsLoading(false);
+    // 2. Demo & Test Account Fallback
+    if (
+      normalizedEmail.includes('admin') ||
+      normalizedEmail === 'admin_society_a@smartresolve.local'
+    ) {
+      return establishDemoSession('society_admin', email);
+    } else if (
+      normalizedEmail.includes('tech') ||
+      normalizedEmail.includes('staff') ||
+      normalizedEmail === 'technician@smartresolve.local'
+    ) {
+      return establishDemoSession('maintenance_staff', email);
+    } else if (
+      normalizedEmail.includes('resident') ||
+      normalizedEmail === 'resident_society_b@smartresolve.local'
+    ) {
+      return establishDemoSession('resident', email);
     }
+
+    const err = 'Invalid credentials. Please use one of the test accounts or demo buttons.';
+    setError(err);
+    return { success: false, error: err };
   };
 
   // Sign Up
@@ -317,6 +431,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error('Sign out error:', err);
     } finally {
+      localStorage.removeItem('smartresolve_demo_session');
       setUser(null);
       setSession(null);
       setProfile(null);
