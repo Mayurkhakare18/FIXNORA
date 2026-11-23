@@ -11,7 +11,7 @@ export const Footer: React.FC = () => {
       <div className="mx-auto grid max-w-6xl gap-8 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         {/* Brand Summary */}
         <div>
-          <b className="text-lg font-bold text-navy">SmartResolve</b>
+          <b className="text-lg font-bold text-navy">Fixnora</b>
           <p className="mt-2 max-w-xs text-sm text-muted-foreground leading-relaxed">
             A smarter, more transparent way to report issues, track progress, and improve our communities.
           </p>
@@ -110,7 +110,7 @@ export const Footer: React.FC = () => {
       </div>
 
       <div className="mx-auto mt-8 max-w-6xl text-[13px] text-muted-foreground flex flex-wrap justify-between items-center gap-2 border-t border-bd/40 pt-4">
-        <span>© 2026 SmartResolve. Civic Complaint Resolution Platform.</span>
+        <span>© 2026 Fixnora. Society Complaint & Resolution Platform.</span>
         <span className="text-xs">Phase 1: Frontend Migration & Layout Preservation</span>
       </div>
     </footer>

@@ -319,6 +319,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If it's a test/demo account or Supabase is unconfigured, handle immediately without network fetch
     if (
       normalizedEmail.includes('admin') ||
+      normalizedEmail === 'admin_society_a@fixnora.local' ||
       normalizedEmail === 'admin_society_a@smartresolve.local' ||
       normalizedEmail.endsWith('.local')
     ) {
@@ -326,11 +327,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else if (
       normalizedEmail.includes('tech') ||
       normalizedEmail.includes('staff') ||
+      normalizedEmail === 'technician@fixnora.local' ||
       normalizedEmail === 'technician@smartresolve.local'
     ) {
       return establishDemoSession('maintenance_staff', email);
     } else if (
       normalizedEmail.includes('resident') ||
+      normalizedEmail === 'resident_society_b@fixnora.local' ||
       normalizedEmail === 'resident_society_b@smartresolve.local'
     ) {
       return establishDemoSession('resident', email);

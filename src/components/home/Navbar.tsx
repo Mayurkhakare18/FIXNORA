@@ -41,7 +41,7 @@ export const Navbar: React.FC = () => {
           <span className="grid h-7 w-7 place-items-center rounded-md bg-[#263B52] text-white shadow-sm">
             <Icon n="check" s={16} />
           </span>
-          <span>SmartResolve</span>
+          <span>Fixnora</span>
         </Link>
 
         {/* Desktop Anchor Navigation */}

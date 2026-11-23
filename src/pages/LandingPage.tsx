@@ -26,7 +26,7 @@ export const LandingPage: React.FC = () => {
       <Pricing />
       <AnalyticsPreview />
       <CtaBanner
-        badge={{ label: "SmartResolve" }}
+        badge={{ label: "Fixnora" }}
         heading={t("ch")}
         button={{ label: t("gs"), href: "#overview" }}
         labels={{

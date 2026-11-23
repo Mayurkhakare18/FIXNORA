@@ -307,7 +307,7 @@ export const RevenueAnalyticsSection: React.FC = () => {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              SmartResolve complies with Indian Goods & Services Tax (GST) Act:
+              Fixnora complies with Indian Goods & Services Tax (GST) Act:
             </p>
 
             <div className="space-y-1.5 text-xs text-slate-700">

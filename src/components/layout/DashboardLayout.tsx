@@ -52,7 +52,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <span className="grid h-7 w-7 place-items-center rounded-md bg-[#263B52] text-white">
                 <Icon n="check" s={16} />
               </span>
-              <span className="hidden sm:inline">SmartResolve</span>
+              <span className="hidden sm:inline">Fixnora</span>
             </Link>
             <span className="text-muted-foreground/60 hidden sm:inline">/</span>
             <div className="flex items-center gap-2">

@@ -40,7 +40,7 @@ export const PendingStatusPage: React.FC = () => {
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#263B52] text-white shadow-md">
               <Icon n="check" s={20} />
             </span>
-            <span>SmartResolve</span>
+            <span>Fixnora</span>
           </div>
           <h1 className="text-xl font-bold text-navy">Application Under Review</h1>
           <p className="text-sm text-muted-foreground">

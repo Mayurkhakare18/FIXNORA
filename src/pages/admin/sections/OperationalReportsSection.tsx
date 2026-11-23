@@ -70,7 +70,7 @@ export const OperationalReportsSection: React.FC<OperationalReportsSectionProps>
         .eq('society_id', societyId);
 
       const csv = exportComplaintsToCsv(compData || []);
-      downloadCsv(`smartresolve-complaints-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+      downloadCsv(`fixnora-complaints-${new Date().toISOString().slice(0, 10)}.csv`, csv);
       setToast('Complaints register exported to CSV.');
     } catch (err: any) {
       setError(err.message || 'Export failed');
@@ -81,7 +81,7 @@ export const OperationalReportsSection: React.FC<OperationalReportsSectionProps>
     try {
       const { data: schedData } = await fetchPreventiveSchedules(societyId);
       const csv = exportPreventiveSchedulesToCsv(schedData || []);
-      downloadCsv(`smartresolve-preventive-schedules-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+      downloadCsv(`fixnora-preventive-schedules-${new Date().toISOString().slice(0, 10)}.csv`, csv);
       setToast('Preventive schedules exported to CSV.');
     } catch (err: any) {
       setError(err.message || 'Export failed');

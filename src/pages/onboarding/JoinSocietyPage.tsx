@@ -127,7 +127,7 @@ export const JoinSocietyPage: React.FC = () => {
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#263B52] text-white shadow-md">
               <Icon n="check" s={20} />
             </span>
-            <span>SmartResolve</span>
+            <span>Fixnora</span>
           </div>
           <h1 className="text-xl font-bold text-navy">Join Your Housing Society</h1>
           <p className="text-sm text-muted-foreground">
@@ -182,7 +182,7 @@ export const JoinSocietyPage: React.FC = () => {
             <span>Residency Registration Policy</span>
           </div>
           <p className="text-muted-foreground leading-relaxed">
-            Per SmartResolve security architecture, new member applications default strictly to{' '}
+            Per Fixnora security architecture, new member applications default strictly to{' '}
             <strong className="text-navy">Resident</strong> role in <Pill tone="w">pending</Pill> status.
             In-house maintenance staff and supervisors are enrolled directly by authorized administrators.
           </p>

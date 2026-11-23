@@ -490,7 +490,7 @@ export const InkHero: React.FC = () => {
     <section
       ref={root}
       id="home"
-      aria-label="SmartResolve"
+      aria-label="Fixnora"
       className="relative w-full bg-background"
       style={{
         height: prefersReduced ? 'auto' : 'calc(100svh - 60px + 240vh)',

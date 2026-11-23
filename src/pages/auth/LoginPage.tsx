@@ -112,7 +112,7 @@ export const LoginPage: React.FC = () => {
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#263B52] text-white shadow-md">
               <Icon n="check" s={20} />
             </span>
-            <span>SmartResolve</span>
+            <span>Fixnora</span>
           </Link>
           <h2 className="mt-4 text-xl font-bold text-navy">Welcome Back</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -149,7 +149,7 @@ export const LoginPage: React.FC = () => {
             <button
               type="button"
               disabled={isLoading}
-              onClick={() => handleQuickLogin('admin_society_a@smartresolve.local', 'AdminPassword@123')}
+              onClick={() => handleQuickLogin('admin_society_a@fixnora.local', 'AdminPassword@123')}
               className="p-3 rounded-lg border border-teal/30 bg-card hover:bg-white text-left transition shadow-xs group"
             >
               <div className="font-bold text-navy text-[11px] group-hover:text-teal flex items-center justify-between">
@@ -157,7 +157,7 @@ export const LoginPage: React.FC = () => {
                 <span className="text-[9px] bg-teal text-white px-1.5 py-0.5 rounded font-semibold">Admin</span>
               </div>
               <div className="text-[10px] text-muted-foreground truncate mt-1">
-                admin_society_a@smartresolve.local
+                admin_society_a@fixnora.local
               </div>
               <div className="text-[10px] text-teal font-medium mt-0.5 flex items-center gap-1">
                 <span>Click to Sign In</span>
@@ -168,7 +168,7 @@ export const LoginPage: React.FC = () => {
             <button
               type="button"
               disabled={isLoading}
-              onClick={() => handleQuickLogin('resident_society_b@smartresolve.local', 'ResidentPassword@123')}
+              onClick={() => handleQuickLogin('resident_society_b@fixnora.local', 'ResidentPassword@123')}
               className="p-3 rounded-lg border border-teal/30 bg-card hover:bg-white text-left transition shadow-xs group"
             >
               <div className="font-bold text-navy text-[11px] group-hover:text-teal flex items-center justify-between">
@@ -176,7 +176,7 @@ export const LoginPage: React.FC = () => {
                 <span className="text-[9px] bg-slate-600 text-white px-1.5 py-0.5 rounded font-semibold">Resident</span>
               </div>
               <div className="text-[10px] text-muted-foreground truncate mt-1">
-                resident_society_b@smartresolve.local
+                resident_society_b@fixnora.local
               </div>
               <div className="text-[10px] text-teal font-medium mt-0.5 flex items-center gap-1">
                 <span>Click to Sign In</span>

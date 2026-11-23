@@ -91,7 +91,7 @@ export const RegisterPage: React.FC = () => {
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#263B52] text-white shadow-md">
               <Icon n="check" s={20} />
             </span>
-            <span>SmartResolve</span>
+            <span>Fixnora</span>
           </Link>
           <h2 className="mt-4 text-xl font-bold text-navy">
             {accountRole === 'society_admin' ? 'Create Administrator Account' : 'Create Resident Account'}

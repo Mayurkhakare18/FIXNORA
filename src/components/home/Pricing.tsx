@@ -34,7 +34,7 @@ export const Pricing: React.FC = () => {
     },
     {
       q: 'What happens if our automated renewal payment fails?',
-      a: 'SmartResolve provides an automatic 7-day grace period. Society residents, wardens, and admins maintain full uninterrupted system access while the treasurer or committee updates payment details or retries the payment.',
+      a: 'Fixnora provides an automatic 7-day grace period. Society residents, wardens, and admins maintain full uninterrupted system access while the treasurer or committee updates payment details or retries the payment.',
     },
     {
       q: 'Can we switch between Hostel Plan and Society Plan or cancel anytime?',

@@ -443,7 +443,7 @@ export const BillingSection: React.FC<BillingSectionProps> = ({ society }) => {
               Automated Renewal Reminders
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              SmartResolve sends proactive alerts prior to recurring auto-debit:
+              Fixnora sends proactive alerts prior to recurring auto-debit:
             </p>
 
             <div className="space-y-2.5 text-xs pt-1">

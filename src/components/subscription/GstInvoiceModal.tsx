@@ -107,20 +107,20 @@ export const GstInvoiceModal: React.FC<GstInvoiceModalProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="grid h-8 w-8 place-items-center rounded bg-[#263B52] text-white font-bold text-sm">
-                    SR
+                    FX
                   </span>
                   <div>
-                    <h1 className="text-lg font-black text-slate-900 tracking-tight">SmartResolve / Fixnora</h1>
+                    <h1 className="text-lg font-black text-slate-900 tracking-tight">Fixnora</h1>
                     <p className="text-[10px] text-slate-500">Cloud ERP for Housing Societies & Hostels</p>
                   </div>
                 </div>
-                <p className="font-semibold text-slate-800">SmartResolve Solutions Pvt. Ltd.</p>
+                <p className="font-semibold text-slate-800">Fixnora Technologies Pvt. Ltd.</p>
                 <p className="text-slate-600">Level 4, Synergy Tech Park, Baner Road, Pune, MH - 411045</p>
                 <p className="text-slate-600">CIN: U72900MH2024PTC123456</p>
                 <p className="text-slate-600 font-medium">
                   GSTIN: <span className="font-bold text-slate-900">27AABCS1429B1Z2</span> (State: 27 - Maharashtra)
                 </p>
-                <p className="text-slate-600">Email: billing@smartresolve.org | Tel: +91 20 4911 2000</p>
+                <p className="text-slate-600">Email: billing@fixnora.com | Tel: +91 20 4911 2000</p>
               </div>
 
               <div className="text-right sm:self-start space-y-1 bg-slate-50 p-4 rounded-lg border border-slate-200 min-w-[220px]">
@@ -199,7 +199,7 @@ export const GstInvoiceModal: React.FC<GstInvoiceModalProps> = ({
                         {invoice.plan_name} SaaS Subscription
                       </p>
                       <p className="text-[11px] text-slate-500">
-                        SmartResolve Cloud ERP Platform subscription for society governance, digital complaints, staff assignment, and maintenance.
+                        Fixnora Cloud ERP Platform subscription for society governance, digital complaints, staff assignment, and maintenance.
                       </p>
                     </td>
                     <td className="p-3 text-center border-r border-slate-200 font-mono text-[11px]">
@@ -302,7 +302,7 @@ export const GstInvoiceModal: React.FC<GstInvoiceModalProps> = ({
               <div className="text-center sm:text-right">
                 <div className="inline-block border border-dashed border-slate-300 rounded px-4 py-2 bg-slate-50 mb-1">
                   <p className="text-[10px] font-bold text-teal tracking-wider uppercase">Digitally Authorized</p>
-                  <p className="text-[9px] text-slate-500">SmartResolve Accounts Dept.</p>
+                  <p className="text-[9px] text-slate-500">Fixnora Accounts Dept.</p>
                 </div>
                 <p className="text-[10px] text-slate-400">Authorised Signatory</p>
               </div>
