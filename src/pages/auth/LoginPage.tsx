@@ -3,7 +3,7 @@
 // Live Supabase authentication with session restoration and role-based redirect
 // ==============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Btn } from '../../components/ui/Primitives';
@@ -18,10 +18,33 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleQuickFill = (demoEmail: string, demoPass: string) => {
+  useEffect(() => {
+    clearError();
+  }, []);
+
+  const handleQuickLogin = async (demoEmail: string, demoPass: string) => {
     setEmail(demoEmail);
     setPassword(demoPass);
     setLocalError(null);
+    clearError();
+    setIsLoading(true);
+
+    try {
+      const result = await signIn(demoEmail, demoPass);
+      if (result.success) {
+        if (demoEmail.includes('admin')) {
+          navigate('/dashboard/admin', { replace: true });
+        } else {
+          navigate('/dashboard/citizen', { replace: true });
+        }
+      } else {
+        setLocalError(result.error || 'Authentication failed. Please verify credentials.');
+      }
+    } catch (err: any) {
+      setLocalError(err.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -119,35 +142,39 @@ export const LoginPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <button
               type="button"
-              onClick={() => handleQuickFill('admin_society_a@smartresolve.local', 'AdminPassword@123')}
-              className="p-2.5 rounded-lg border border-teal/20 bg-card hover:bg-white text-left transition shadow-xs group"
+              disabled={isLoading}
+              onClick={() => handleQuickLogin('admin_society_a@smartresolve.local', 'AdminPassword@123')}
+              className="p-3 rounded-lg border border-teal/30 bg-card hover:bg-white text-left transition shadow-xs group"
             >
               <div className="font-bold text-navy text-[11px] group-hover:text-teal flex items-center justify-between">
-                <span>Society Admin</span>
-                <span className="text-[9px] bg-teal text-white px-1 py-0.2 rounded font-semibold">Admin</span>
+                <span>Society Admin (1-Click Login)</span>
+                <span className="text-[9px] bg-teal text-white px-1.5 py-0.5 rounded font-semibold">Admin</span>
               </div>
-              <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+              <div className="text-[10px] text-muted-foreground truncate mt-1">
                 admin_society_a@smartresolve.local
               </div>
-              <div className="text-[10px] text-muted-foreground font-mono">
-                Pass: AdminPassword@123
+              <div className="text-[10px] text-teal font-medium mt-0.5 flex items-center gap-1">
+                <span>Click to Sign In</span>
+                <Icon n="arrow-right" s={10} />
               </div>
             </button>
 
             <button
               type="button"
-              onClick={() => handleQuickFill('resident_society_b@smartresolve.local', 'ResidentPassword@123')}
-              className="p-2.5 rounded-lg border border-teal/20 bg-card hover:bg-white text-left transition shadow-xs group"
+              disabled={isLoading}
+              onClick={() => handleQuickLogin('resident_society_b@smartresolve.local', 'ResidentPassword@123')}
+              className="p-3 rounded-lg border border-teal/30 bg-card hover:bg-white text-left transition shadow-xs group"
             >
               <div className="font-bold text-navy text-[11px] group-hover:text-teal flex items-center justify-between">
-                <span>Resident</span>
-                <span className="text-[9px] bg-slate-600 text-white px-1 py-0.2 rounded font-semibold">Resident</span>
+                <span>Resident (1-Click Login)</span>
+                <span className="text-[9px] bg-slate-600 text-white px-1.5 py-0.5 rounded font-semibold">Resident</span>
               </div>
-              <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+              <div className="text-[10px] text-muted-foreground truncate mt-1">
                 resident_society_b@smartresolve.local
               </div>
-              <div className="text-[10px] text-muted-foreground font-mono">
-                Pass: ResidentPassword@123
+              <div className="text-[10px] text-teal font-medium mt-0.5 flex items-center gap-1">
+                <span>Click to Sign In</span>
+                <Icon n="arrow-right" s={10} />
               </div>
             </button>
           </div>

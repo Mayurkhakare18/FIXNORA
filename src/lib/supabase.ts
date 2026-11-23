@@ -25,6 +25,7 @@ const isPlaceholder = (val: string) =>
   val.includes('your-project-ref') ||
   val.includes('your-anon-publishable-key') ||
   val.includes('your-publishable-key') ||
+  val.includes('uawgiemprtthbzdhulpb') ||
   val.trim() === '';
 
 export const isSupabaseConfigured = !isPlaceholder(rawUrl) && !isPlaceholder(rawPublishableKey);

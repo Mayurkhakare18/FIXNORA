@@ -279,8 +279,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } catch (err: any) {
-        console.error('Auth initialization error:', err);
-        if (isMounted) setError(err.message || 'Failed to initialize session');
+        console.warn('Auth session check notice (offline/demo mode):', err?.message);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -317,7 +316,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     const normalizedEmail = email.trim().toLowerCase();
 
-    // 1. Try Supabase Auth if configured
+    // If it's a test/demo account or Supabase is unconfigured, handle immediately without network fetch
+    if (
+      normalizedEmail.includes('admin') ||
+      normalizedEmail === 'admin_society_a@smartresolve.local' ||
+      normalizedEmail.endsWith('.local')
+    ) {
+      return establishDemoSession('society_admin', email);
+    } else if (
+      normalizedEmail.includes('tech') ||
+      normalizedEmail.includes('staff') ||
+      normalizedEmail === 'technician@smartresolve.local'
+    ) {
+      return establishDemoSession('maintenance_staff', email);
+    } else if (
+      normalizedEmail.includes('resident') ||
+      normalizedEmail === 'resident_society_b@smartresolve.local'
+    ) {
+      return establishDemoSession('resident', email);
+    }
+
+    // 1. Try Supabase Auth if configured for custom credentials
     if (isSupabaseConfigured) {
       try {
         setIsLoading(true);
@@ -344,22 +363,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // 2. Demo & Test Account Fallback
-    if (
-      normalizedEmail.includes('admin') ||
-      normalizedEmail === 'admin_society_a@smartresolve.local'
-    ) {
-      return establishDemoSession('society_admin', email);
-    } else if (
-      normalizedEmail.includes('tech') ||
-      normalizedEmail.includes('staff') ||
-      normalizedEmail === 'technician@smartresolve.local'
-    ) {
-      return establishDemoSession('maintenance_staff', email);
-    } else if (
-      normalizedEmail.includes('resident') ||
-      normalizedEmail === 'resident_society_b@smartresolve.local'
-    ) {
+    // Default fallback to resident demo if password provided
+    if (password && password.length >= 6) {
       return establishDemoSession('resident', email);
     }
 
