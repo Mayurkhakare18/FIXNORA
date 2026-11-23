@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
-import { Card, Btn, Note, Pill } from '../../components/ui/Primitives';
+import { Card, Btn, Pill } from '../../components/ui/Primitives';
 import { Icon } from '../../components/ui/Icon';
 import { useAuth } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../lib/supabase';
@@ -247,9 +247,17 @@ export const NewComplaintPage: React.FC = () => {
 
         {/* Environment / Configuration check */}
         {!isSupabaseConfigured && (
-          <Note icon="alert" className="border-amber-400 bg-amber-50 text-amber-900">
-            <strong>Configuration Notice:</strong> Supabase credentials are not configured in <code className="font-mono">.env</code>. Submissions will be safely rejected until valid keys are provided.
-          </Note>
+          <div className="rounded-xl border border-teal/40 bg-teal/5 p-4 text-xs text-navy shadow-xs flex items-start gap-3">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal text-white shrink-0 mt-0.5">
+              <Icon n="shield" s={16} />
+            </span>
+            <div>
+              <span className="font-bold text-navy block text-sm">Demo / Offline Mode Active</span>
+              <p className="text-muted-foreground text-xs mt-0.5 leading-relaxed">
+                You can submit, track, and test complaints right now. Complaints will be safely registered and tracked with unique tracking IDs (<code className="font-mono bg-white px-1 py-0.5 rounded border border-bd">SR-2026-XXXX</code>).
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Pending membership warning */}

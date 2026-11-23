@@ -43,7 +43,33 @@ export async function submitResidentResolutionReview(
   updatedStatus: 'closed' | 'reopened';
 }> {
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase environment is not configured.');
+    const updatedStatus = input.isSatisfied ? 'closed' : 'reopened';
+    try {
+      const stored = localStorage.getItem('smartresolve_demo_complaints');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const idx = list.findIndex((c: any) => c.id === input.complaintId);
+        if (idx !== -1) {
+          list[idx].status = updatedStatus;
+          localStorage.setItem('smartresolve_demo_complaints', JSON.stringify(list));
+        }
+      }
+    } catch (e) {
+      console.warn('Could not update demo complaint status', e);
+    }
+
+    return {
+      verification: {
+        id: `verif-${Date.now()}`,
+        complaint_id: input.complaintId,
+        society_id: input.societyId,
+        verified_by: input.residentId,
+        is_satisfied: input.isSatisfied,
+        verification_notes: input.verificationNotes || null,
+        verified_at: new Date().toISOString(),
+      },
+      updatedStatus,
+    };
   }
 
   // 1. Fetch current complaint to verify ownership and eligibility

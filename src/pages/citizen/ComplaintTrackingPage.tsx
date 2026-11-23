@@ -208,8 +208,13 @@ export const ComplaintTrackingPage: React.FC = () => {
 
         {/* Configuration banner */}
         {!isSupabaseConfigured && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900">
-            <strong>Configuration Notice:</strong> Supabase credentials are not configured in <code className="font-mono">.env</code>. Real database lookups will be unavailable until credentials are provided.
+          <div className="rounded-lg border border-teal/30 bg-teal/5 p-3.5 text-xs text-navy flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon n="shield" s={16} c="text-teal shrink-0" />
+              <span>
+                <strong>Demo Tracking Active:</strong> Try tracking sample complaint <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-bd text-navy font-bold cursor-pointer hover:bg-soft" onClick={() => { setSearchInput('SR-2026-1042'); fetchComplaint('SR-2026-1042'); }}>SR-2026-1042</code> or any newly submitted complaint ID.
+              </span>
+            </div>
           </div>
         )}
 
