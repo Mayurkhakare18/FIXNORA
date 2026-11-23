@@ -127,7 +127,7 @@ export const Pricing: React.FC = () => {
               </div>
 
               <div className="pt-8">
-                <Link to="/auth/register" className="block">
+                <Link to="/auth/register?role=admin&plan=hostel" className="block">
                   <Btn v="secondary" className="w-full py-3 shadow hover:bg-soft flex items-center justify-center gap-2">
                     <span>Subscribe to Hostel Plan</span>
                     <Icon n="arrow-right" s={14} />
@@ -194,7 +194,7 @@ export const Pricing: React.FC = () => {
               </div>
 
               <div className="pt-8">
-                <Link to="/auth/register" className="block">
+                <Link to="/auth/register?role=admin&plan=society" className="block">
                   <Btn v="p" className="w-full py-3.5 shadow-lg bg-[#263B52] hover:bg-[#34506b] flex items-center justify-center gap-2">
                     <span>Subscribe to Society Plan</span>
                     <Icon n="arrow-right" s={14} />

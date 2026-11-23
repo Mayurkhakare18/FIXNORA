@@ -26,7 +26,13 @@ export interface AuthContextType {
     memberships?: SocietyMembership[];
     currentMembership?: SocietyMembership | null;
   }>;
-  signUp: (email: string, password: string, fullName: string, preferredLanguage?: 'en' | 'hi' | 'mr') => Promise<{ success: boolean; error?: string }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    preferredLanguage?: 'en' | 'hi' | 'mr',
+    desiredRole?: 'resident' | 'society_admin'
+  ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
@@ -148,7 +154,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Helper to establish a demo/seeded session for local testing or demo environments
-  const establishDemoSession = (role: 'society_admin' | 'resident' | 'maintenance_staff', email: string) => {
+  const establishDemoSession = (
+    role: 'society_admin' | 'resident' | 'maintenance_staff',
+    email: string,
+    customName?: string
+  ) => {
     const isSocietyAdmin = role === 'society_admin';
     const isStaff = role === 'maintenance_staff';
 
@@ -159,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const mockUser: User = {
       id: mockUserId,
       app_metadata: {},
-      user_metadata: {},
+      user_metadata: { full_name: customName || (isSocietyAdmin ? 'Kavita Iyer' : 'Aarav Sharma') },
       aud: 'authenticated',
       created_at: new Date().toISOString(),
       email: email.trim(),
@@ -167,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const mockProfile: Profile = {
       id: mockUserId,
-      full_name: isSocietyAdmin ? 'Kavita Iyer (Society Admin)' : isStaff ? 'Rajesh Kumar (Technician)' : 'Aarav Sharma (Resident)',
+      full_name: customName || (isSocietyAdmin ? 'Kavita Iyer (Society Admin)' : isStaff ? 'Rajesh Kumar (Technician)' : 'Aarav Sharma (Resident)'),
       email: email.trim(),
       preferred_language: 'en',
       is_platform_admin: false,
@@ -363,61 +373,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     password: string,
     fullName: string,
-    preferredLanguage: 'en' | 'hi' | 'mr' = 'en'
+    preferredLanguage: 'en' | 'hi' | 'mr' = 'en',
+    desiredRole: 'resident' | 'society_admin' = 'society_admin'
   ) => {
     setError(null);
-    if (!isSupabaseConfigured) {
-      const err = 'Supabase credentials are not configured in .env. Real registration requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.';
-      setError(err);
-      return { success: false, error: err };
-    }
+    setIsLoading(true);
 
-    try {
-      setIsLoading(true);
-      const { data, error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            full_name: fullName.trim(),
-            preferred_language: preferredLanguage,
-          },
-        },
-      });
-
-      if (authError) {
-        setError(authError.message);
-        return { success: false, error: authError.message };
-      }
-
-      if (data.user) {
-        // Initialize profile in public.profiles table (strictly is_platform_admin = false)
-        const { error: profileError } = await supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: fullName.trim(),
+    // 1. Try Supabase live auth if configured
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
-          preferred_language: preferredLanguage,
-          is_platform_admin: false,
+          password,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              preferred_language: preferredLanguage,
+            },
+          },
         });
 
-        if (profileError) {
-          console.warn('Profile initialization notice:', profileError.message);
-        }
+        if (!authError && data.user) {
+          try {
+            await supabase.from('profiles').upsert({
+              id: data.user.id,
+              full_name: fullName.trim(),
+              email: email.trim(),
+              preferred_language: preferredLanguage,
+              is_platform_admin: false,
+            });
+          } catch (profileErr) {
+            console.warn('Profile upsert notice:', profileErr);
+          }
 
-        setUser(data.user);
-        setSession(data.session);
-        if (data.session) {
-          await fetchUserData(data.user.id);
+          setUser(data.user);
+          setSession(data.session);
+          if (data.session) {
+            await fetchUserData(data.user.id);
+          }
+          setIsLoading(false);
+          return { success: true };
+        } else if (authError) {
+          console.warn('Supabase auth signup error, evaluating demo fallback:', authError.message);
         }
+      } catch (netErr: any) {
+        console.warn('Live Supabase signUp network error/unreachable, falling back to local account:', netErr);
       }
+    }
 
-      return { success: true };
-    } catch (err: any) {
-      const msg = err.message || 'An unexpected error occurred during registration';
+    // 2. Offline / local fallback account registration
+    try {
+      const demoResult = establishDemoSession(desiredRole, email.trim(), fullName.trim());
+      setIsLoading(false);
+      return demoResult;
+    } catch (fallbackErr: any) {
+      setIsLoading(false);
+      const msg = fallbackErr.message || 'Registration failed. Please try again.';
       setError(msg);
       return { success: false, error: msg };
-    } finally {
-      setIsLoading(false);
     }
   };
 

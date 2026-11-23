@@ -1,16 +1,28 @@
 // ==============================================================================
 // SmartResolve Authentication: Registration Page
-// Live resident self-registration with profile initialization and language preference
+// Supports Society/Hostel Administrator and Resident self-registration
+// Fully resilient offline/demo fallback, language selection, and plan onboarding
 // ==============================================================================
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Card, Btn } from '../../components/ui/Primitives';
+import { Card, Btn, Pill } from '../../components/ui/Primitives';
 import { Icon } from '../../components/ui/Icon';
+import { changeSubscriptionPlan, SUBSCRIPTION_PLANS } from '../../lib/subscriptionService';
+import type { SubscriptionPlanType } from '../../types/database';
 
 export const RegisterPage: React.FC = () => {
-  const { signUp, isConfigured, error: authError, clearError } = useAuth();
+  const { signUp, error: authError, clearError } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const planParam = searchParams.get('plan') as SubscriptionPlanType | null;
+  const roleParam = searchParams.get('role');
+
+  const initialRole = planParam || roleParam === 'admin' ? 'society_admin' : 'resident';
+
+  const [accountRole, setAccountRole] = useState<'society_admin' | 'resident'>(initialRole);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,7 +30,8 @@ export const RegisterPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [registrationComplete, setRegistrationComplete] = useState(false);
-  const navigate = useNavigate();
+
+  const selectedPlanMeta = planParam ? SUBSCRIPTION_PLANS[planParam] : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,18 +51,31 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const result = await signUp(email, password, fullName, language);
+      const result = await signUp(email, password, fullName, language, accountRole);
       if (!result.success) {
         setLocalError(result.error || 'Registration failed. Please review your details.');
         setIsLoading(false);
         return;
       }
 
+      // If a plan was chosen from landing page, initialize subscription
+      if (planParam && (planParam === 'hostel' || planParam === 'society')) {
+        try {
+          await changeSubscriptionPlan('11111111-1111-1111-1111-111111111111', planParam, 'monthly');
+        } catch (subErr) {
+          console.warn('Subscription initialization notice:', subErr);
+        }
+      }
+
       setRegistrationComplete(true);
-      // Wait a moment then route to onboarding join society
+
       setTimeout(() => {
-        navigate('/onboarding/join-society', { replace: true });
-      }, 1500);
+        if (accountRole === 'society_admin' || planParam) {
+          navigate('/admin/billing', { replace: true });
+        } else {
+          navigate('/dashboard/citizen', { replace: true });
+        }
+      }, 1200);
     } catch (err: any) {
       setLocalError(err.message || 'An unexpected error occurred');
       setIsLoading(false);
@@ -67,22 +93,31 @@ export const RegisterPage: React.FC = () => {
             </span>
             <span>SmartResolve</span>
           </Link>
-          <h2 className="mt-4 text-xl font-bold text-navy">Create Resident Account</h2>
+          <h2 className="mt-4 text-xl font-bold text-navy">
+            {accountRole === 'society_admin' ? 'Create Administrator Account' : 'Create Resident Account'}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Register to submit, track, and verify community resolutions
+            {accountRole === 'society_admin'
+              ? 'Manage hostel/society operations, staff assignments & billing'
+              : 'Register to submit, track, and verify community resolutions'}
           </p>
         </div>
 
-        {/* Configuration Notice if Supabase is unconfigured */}
-        {!isConfigured && (
-          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 shadow-sm space-y-1">
-            <div className="flex items-center gap-2 font-bold text-amber-800">
-              <Icon n="alert" s={14} />
-              <span>Live Supabase Credentials Unset</span>
+        {/* Selected Plan Highlight Banner */}
+        {selectedPlanMeta && (
+          <div className="mb-4 rounded-xl border border-teal/40 bg-teal/10 p-4 text-xs shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal text-white font-bold">
+                <Icon n="check" s={16} />
+              </span>
+              <div>
+                <span className="font-bold text-navy block">{selectedPlanMeta.name} Selected</span>
+                <span className="text-[11px] text-teal font-medium">
+                  ₹{selectedPlanMeta.monthlyPrice.toLocaleString('en-IN')}/month + 18% GST (SAC 998314)
+                </span>
+              </div>
             </div>
-            <p className="leading-relaxed">
-              Real account creation requires <code className="bg-white/80 px-1 py-0.5 rounded font-mono">VITE_SUPABASE_URL</code> and <code className="bg-white/80 px-1 py-0.5 rounded font-mono">VITE_SUPABASE_ANON_KEY</code> in <code className="bg-white/80 px-1 py-0.5 rounded font-mono">.env</code>.
-            </p>
+            <Pill tone="t">Ready</Pill>
           </div>
         )}
 
@@ -94,7 +129,9 @@ export const RegisterPage: React.FC = () => {
               </div>
               <h3 className="text-lg font-bold text-navy">Account Registered</h3>
               <p className="text-xs text-muted-foreground">
-                Profile initialized. Redirecting to society selection...
+                {accountRole === 'society_admin' || planParam
+                  ? 'Administrator workspace ready. Redirecting to Billing Dashboard...'
+                  : 'Profile initialized. Redirecting to Citizen Portal...'}
               </p>
             </div>
           ) : (
@@ -106,6 +143,37 @@ export const RegisterPage: React.FC = () => {
                 </div>
               )}
 
+              {/* Role Selector Tabs */}
+              <div className="mb-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
+                  Account Type
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAccountRole('society_admin')}
+                    className={`p-2.5 rounded-lg border text-xs font-semibold text-center transition ${
+                      accountRole === 'society_admin'
+                        ? 'border-teal bg-teal/10 text-teal shadow-xs'
+                        : 'border-bd bg-soft text-muted-foreground hover:bg-white'
+                    }`}
+                  >
+                    Society / Hostel Admin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAccountRole('resident')}
+                    className={`p-2.5 rounded-lg border text-xs font-semibold text-center transition ${
+                      accountRole === 'resident'
+                        ? 'border-teal bg-teal/10 text-teal shadow-xs'
+                        : 'border-bd bg-soft text-muted-foreground hover:bg-white'
+                    }`}
+                  >
+                    Resident
+                  </button>
+                </div>
+              </div>
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
@@ -116,7 +184,7 @@ export const RegisterPage: React.FC = () => {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Aarav Sharma"
+                    placeholder={accountRole === 'society_admin' ? 'e.g. Kavita Iyer' : 'e.g. Aarav Sharma'}
                     className="w-full rounded-lg border border-bd bg-card px-3.5 py-2.5 text-sm text-navy placeholder:text-muted-foreground/50 focus:border-teal focus:outline-none"
                   />
                 </div>
@@ -130,7 +198,7 @@ export const RegisterPage: React.FC = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="aarav@community.org"
+                    placeholder={accountRole === 'society_admin' ? 'admin@housing-society.org' : 'resident@society.org'}
                     className="w-full rounded-lg border border-bd bg-card px-3.5 py-2.5 text-sm text-navy placeholder:text-muted-foreground/50 focus:border-teal focus:outline-none"
                   />
                 </div>
@@ -164,17 +232,6 @@ export const RegisterPage: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Role Policy Explanation */}
-                <div className="rounded-lg bg-soft p-3 text-[11px] text-muted-foreground space-y-1">
-                  <div className="font-semibold text-navy flex items-center gap-1.5">
-                    <Icon n="shield" s={12} c="text-teal" />
-                    <span>Role Authorization Policy</span>
-                  </div>
-                  <p className="leading-relaxed">
-                    Public registration provides resident membership capabilities. In-house maintenance staff, supervisors, and committee administrators are authorized by the Society Management Committee.
-                  </p>
-                </div>
-
                 <Btn
                   type="submit"
                   v="p"
@@ -187,7 +244,9 @@ export const RegisterPage: React.FC = () => {
                       <span>Creating Account...</span>
                     </>
                   ) : (
-                    <span>Create Resident Account</span>
+                    <span>
+                      {accountRole === 'society_admin' ? 'Create Administrator Account' : 'Create Resident Account'}
+                    </span>
                   )}
                 </Btn>
               </form>
