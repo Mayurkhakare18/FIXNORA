@@ -137,11 +137,33 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               <strong>{currentSociety?.name || 'this society'}</strong> is not authorized to access this section.
             </p>
           </div>
-          <div className="pt-2">
-            <Link to={defaultRoute}>
+          <div className="pt-2 space-y-2">
+            <Link to={defaultRoute} className="block">
               <Btn v="p" className="w-full">
                 Go to My Authorized Dashboard
               </Btn>
+            </Link>
+            {currentMembership.role === 'society_admin' && (
+              <div className="flex gap-2">
+                <Link to="/admin/billing" className="flex-1">
+                  <Btn v="secondary" className="w-full text-xs py-2">
+                    Billing & Plans
+                  </Btn>
+                </Link>
+                <Link to="/dashboard/citizen" className="flex-1">
+                  <Btn v="secondary" className="w-full text-xs py-2">
+                    Resident View
+                  </Btn>
+                </Link>
+              </div>
+            )}
+            <Link to="/" className="block">
+              <button
+                type="button"
+                className="w-full py-2 text-xs font-semibold text-muted-foreground hover:text-navy transition"
+              >
+                Return to Homepage
+              </button>
             </Link>
           </div>
         </Card>

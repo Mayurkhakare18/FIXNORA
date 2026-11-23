@@ -67,26 +67,32 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
-      // Check where to redirect based on location state or membership status
-      const fromPath = (location.state as any)?.from?.pathname;
-      if (fromPath && fromPath !== '/auth/login' && fromPath !== '/auth/register') {
-        navigate(fromPath, { replace: true });
-        return;
-      }
-
       // Redirect by freshly fetched membership state
       const userMems = result.memberships ?? memberships;
       const activeMem = result.currentMembership ?? userMems.find((m) => m.status === 'active') ?? userMems[0] ?? currentMembership;
+      const role = activeMem?.role;
+
+      // Check where to redirect based on location state or membership status
+      const fromPath = (location.state as any)?.from?.pathname;
+      if (fromPath && fromPath !== '/auth/login' && fromPath !== '/auth/register') {
+        // If society admin and destination was a generic resident/citizen page, prioritize admin dashboard
+        if (role === 'society_admin' && (fromPath === '/dashboard/citizen' || fromPath === '/')) {
+          navigate('/dashboard/admin', { replace: true });
+          return;
+        }
+        navigate(fromPath, { replace: true });
+        return;
+      }
 
       if (userMems.length === 0) {
         navigate('/onboarding/join-society', { replace: true });
       } else if (activeMem?.status === 'pending') {
         navigate('/onboarding/pending-status', { replace: true });
-      } else if (activeMem?.role === 'society_admin') {
+      } else if (role === 'society_admin') {
         navigate('/dashboard/admin', { replace: true });
-      } else if (activeMem?.role === 'maintenance_staff') {
+      } else if (role === 'maintenance_staff') {
         navigate('/dashboard/officer', { replace: true });
-      } else if (activeMem?.role === 'supervisor') {
+      } else if (role === 'supervisor') {
         navigate('/dashboard/department', { replace: true });
       } else {
         navigate('/dashboard/citizen', { replace: true });

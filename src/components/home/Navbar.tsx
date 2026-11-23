@@ -67,27 +67,66 @@ export const Navbar: React.FC = () => {
             </a>
           ))}
           <div className="my-2 border-t border-bd/60 lg:hidden" />
-          <Link
-            to="/dashboard/citizen"
-            onClick={() => setMobileMenuOpen(false)}
-            className="rounded-md px-3 py-2 text-sm font-medium text-teal hover:bg-teal/10 lg:hidden"
-          >
-            Citizen Portal
-          </Link>
-          <Link
-            to="/dashboard/officer"
-            onClick={() => setMobileMenuOpen(false)}
-            className="rounded-md px-3 py-2 text-sm font-medium text-navy hover:bg-soft lg:hidden"
-          >
-            Officer Portal
-          </Link>
-          <Link
-            to="/dashboard/admin"
-            onClick={() => setMobileMenuOpen(false)}
-            className="rounded-md px-3 py-2 text-sm font-medium text-navy hover:bg-soft lg:hidden"
-          >
-            Admin Portal
-          </Link>
+          {user ? (
+            <>
+              {currentMembership?.role === 'society_admin' && (
+                <>
+                  <Link
+                    to="/dashboard/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded-md px-3 py-2 text-sm font-bold text-teal hover:bg-teal/10 lg:hidden"
+                  >
+                    Admin Portal
+                  </Link>
+                  <Link
+                    to="/admin/billing"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded-md px-3 py-2 text-sm font-medium text-navy hover:bg-soft lg:hidden"
+                  >
+                    Billing & Subscriptions
+                  </Link>
+                  <Link
+                    to="/admin/revenue"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="rounded-md px-3 py-2 text-sm font-medium text-navy hover:bg-soft lg:hidden"
+                  >
+                    Revenue Analytics
+                  </Link>
+                </>
+              )}
+              <Link
+                to="/dashboard/citizen"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-md px-3 py-2 text-sm font-medium text-navy hover:bg-soft lg:hidden"
+              >
+                Resident View
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/dashboard/citizen"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-md px-3 py-2 text-sm font-medium text-teal hover:bg-teal/10 lg:hidden"
+              >
+                Citizen Portal
+              </Link>
+              <Link
+                to="/dashboard/officer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-md px-3 py-2 text-sm font-medium text-navy hover:bg-soft lg:hidden"
+              >
+                Officer Portal
+              </Link>
+              <Link
+                to="/dashboard/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-md px-3 py-2 text-sm font-medium text-navy hover:bg-soft lg:hidden"
+              >
+                Admin Portal
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Language Selector & Auth Buttons */}
@@ -105,6 +144,13 @@ export const Navbar: React.FC = () => {
 
           {user ? (
             <div className="hidden sm:inline-flex items-center gap-2">
+              {currentMembership?.role === 'society_admin' && (
+                <Link to="/admin/billing">
+                  <Btn v="secondary" className="py-2 text-xs">
+                    Billing & Plans
+                  </Btn>
+                </Link>
+              )}
               <Link to={
                 currentMembership?.role === 'society_admin'
                   ? '/dashboard/admin'

@@ -73,11 +73,11 @@ export const App: React.FC = () => {
           }
         />
 
-        {/* Resident / Citizen Protected Routes */}
+        {/* Resident / Citizen Protected Routes (Accessible by Residents and Society Admins/Supervisors) */}
         <Route
           path="/dashboard/citizen"
           element={
-            <ProtectedRoute allowedRoles={['resident']}>
+            <ProtectedRoute allowedRoles={['resident', 'society_admin', 'supervisor']}>
               <CitizenDashboard />
             </ProtectedRoute>
           }
@@ -85,7 +85,7 @@ export const App: React.FC = () => {
         <Route
           path="/complaints/new"
           element={
-            <ProtectedRoute allowedRoles={['resident']}>
+            <ProtectedRoute allowedRoles={['resident', 'society_admin', 'supervisor']}>
               <NewComplaintPage />
             </ProtectedRoute>
           }

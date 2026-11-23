@@ -2,21 +2,38 @@ import React, { useState } from 'react';
 import { DashboardLayout } from '../../components/layout/DashboardLayout';
 import { Card, Btn } from '../../components/ui/Primitives';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { Language } from '../../i18n/translations';
-
-const SETTINGS_NAV = [
-  { label: "Overview", href: "/dashboard/citizen", icon: "file" as const },
-  { label: "Report Issue", href: "/complaints/new", icon: "upload" as const },
-  { label: "Track by ID", href: "/track", icon: "search" as const },
-  { label: "Settings", href: "/settings/profile", icon: "user" as const },
-];
 
 export const ProfileSettingsPage: React.FC = () => {
   const { lang, setLang, toast } = useApp();
-  const [fullName, setFullName] = useState('Resident User');
+  const { user, profile, currentMembership } = useAuth();
+  const [fullName, setFullName] = useState(profile?.full_name || user?.user_metadata?.full_name || 'Resident User');
   const [phone, setPhone] = useState('+91 98765 43210');
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [notifySms, setNotifySms] = useState(false);
+
+  const overviewHref = currentMembership?.role === 'society_admin'
+    ? '/dashboard/admin'
+    : currentMembership?.role === 'maintenance_staff'
+    ? '/dashboard/officer'
+    : currentMembership?.role === 'supervisor'
+    ? '/dashboard/department'
+    : '/dashboard/citizen';
+
+  const settingsNav = [
+    { label: "Overview", href: overviewHref, icon: "file" as const },
+    ...(currentMembership?.role === 'society_admin'
+      ? [
+          { label: "Billing & Plans", href: "/admin/billing", icon: "file" as const },
+          { label: "Revenue Analytics", href: "/admin/revenue", icon: "chart" as const },
+        ]
+      : [
+          { label: "Report Issue", href: "/complaints/new", icon: "upload" as const },
+        ]),
+    { label: "Track by ID", href: "/track", icon: "search" as const },
+    { label: "Settings", href: "/settings/profile", icon: "user" as const },
+  ];
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +44,7 @@ export const ProfileSettingsPage: React.FC = () => {
     <DashboardLayout
       roleTitle="Account Settings"
       roleBadge="Profile"
-      navItems={SETTINGS_NAV}
+      navItems={settingsNav}
     >
       <div className="max-w-3xl space-y-6">
         <div>
